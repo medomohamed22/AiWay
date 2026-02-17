@@ -1,1487 +1,1522 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content"/>
-<title>AIWay</title>
-<script src="https://sdk.minepi.com/pi-sdk.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
-
+<title>Nano Banana AI Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
-/* --- Design System & New Colors --- */
+/* --- Design System --- */
 :root {
-    --bg: #050505; 
+    --bg: #09090b;
     --chat-bg: #000000;
-    --card: #121212;
-    
-    /* Gradient from Logo (Purple to Orange/Gold) */
-    --primary-gradient: linear-gradient(135deg, #8b5cf6 0%, #f59e0b 100%);
-    --text-gradient: linear-gradient(135deg, #a78bfa 0%, #fbbf24 100%);
-    
-    --pi-purple: #7c3aed;
-    --pi-gold: #f59e0b;
-    
+    --card: #18181b;
+    --user-msg-bg: #27272a;
+    --bot-msg-bg: #18181b; 
+    --accent: #d1fa31; /* Nano Banana Green */
+    --accent-chat: #3b82f6; /* Blue for Chat Mode */
+    --accent-video: #f43f5e; /* Red for Video Mode */
+    --warning: #f59e0b;
     --text-main: #ffffff;
     --text-sub: #a1a1aa;
     --border: #27272a;
+    --error: #ef4444;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
-    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--chat-bg); color: var(--text-main);
-    display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
-    direction: rtl; 
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--chat-bg);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    height: 100dvh; 
+    overflow: hidden;
 }
 
 /* --- Landing Page --- */
-.landing-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: #000; z-index: 9999;
+.landing-page {
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+    z-index: 9999;
+    display: flex; flex-direction: column;
+    padding: 20px;
+    transition: opacity 0.5s ease, visibility 0.5s;
+}
+.landing-header {
+    display: flex; justify-content: flex-end; padding-top: 10px;
+}
+.landing-content {
+    flex: 1; display: flex; flex-direction: column; 
+    align-items: center; justify-content: center;
+    text-align: center; gap: 20px;
+    max-width: 400px; margin: 0 auto; width: 100%;
+}
+
+.brand-title {
+    font-size: 60px; font-weight: 800;
+    margin: 0; letter-spacing: -1px;
+}
+/* Gradient Text for Title */
+.brand-ai { background: linear-gradient(to right, #bbbcd9, #9d96f5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.brand-way { background: linear-gradient(to right, #f5dba3, #e6b980); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.landing-desc {
+    color: #b0b0b0; font-size: 16px; line-height: 1.5; margin-bottom: 30px;
+}
+
+.site-supports-label {
+    color: #e6b980; font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 10px;
+}
+
+.features-grid {
+    display: flex; gap: 10px; width: 100%; justify-content: center; margin-bottom: 40px;
+}
+.feature-card {
+    flex: 1; height: 80px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 20px; text-align: center;
-    transition: opacity 0.5s ease;
-    background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
+    position: relative;
+    background: rgba(255,255,255,0.03);
 }
-
-.landing-lang-btn {
-    position: absolute; top: 20px; right: 20px;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-    color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
-    font-weight: 700; z-index: 10; backdrop-filter: blur(10px);
-}
-
-/* Updated Text Logo Style */
-.landing-logo-text {
-    font-size: 64px; 
-    font-weight: 900; 
-    margin-bottom: 10px;
-    background: var(--text-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 25px rgba(124, 58, 237, 0.4));
-    letter-spacing: -2px;
-}
-
-.landing-desc { color: #ccc; margin-bottom: 40px; font-size: 15px; line-height: 1.6; max-width: 300px; }
-
-.features-title { font-size: 14px; color: var(--pi-gold); margin-bottom: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-.features-container { display: flex; gap: 15px; justify-content: center; margin-bottom: 50px; }
-
-.feature-btn {
-    padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 14px;
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
-    border: none; cursor: default; position: relative; min-width: 110px;
-}
-
-.f-images {
-    background: var(--primary-gradient);
-    color: white;
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
-}
-
-.f-video {
-    background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-.soon-badge {
-    font-size: 9px; background: #333; color: #fff; padding: 2px 6px; border-radius: 4px;
-    position: absolute; bottom: -10px; border: 1px solid #444;
-}
-
-.pi-login-btn {
-    background: var(--primary-gradient);
-    color: white;
+/* Active State Styling */
+.feature-card.active {
+    background: linear-gradient(135deg, #7c3aed 0%, #e6b980 100%);
     border: none;
-    padding: 14px 50px; border-radius: 30px;
-    font-weight: 800; font-size: 16px; cursor: pointer;
-    box-shadow: 0 0 30px rgba(124, 58, 237, 0.4);
-    display: flex; align-items: center; gap: 10px;
+    color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.feature-text { font-size: 14px; font-weight: 700; }
+
+.login-btn-main {
+    width: 100%; max-width: 300px;
+    padding: 16px; border-radius: 30px;
+    border: none;
+    background: linear-gradient(90deg, #8b5cf6 0%, #f59e0b 100%);
+    color: white; font-size: 18px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
     transition: transform 0.2s;
 }
-.pi-login-btn:active { transform: scale(0.95); }
-.pi-login-btn svg { width: 24px; height: 24px; fill: white; }
-
-/* --- Header --- */
-.header {
-    padding: 10px 16px; background: rgba(5, 5, 5, 0.9);
-    backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    height: 60px; flex-shrink: 0; z-index: 100;
-}
-.header-title-area {
-    display: flex; align-items: center; gap: 8px; cursor: pointer;
-    padding: 4px 8px; border-radius: 12px; transition: 0.2s;
-}
-.header-title-area:active { background: rgba(255,255,255,0.05); }
-
-/* Token Badge in Header */
-.header-cost-badge {
-    background: var(--pi-gold); color: #000;
-    font-size: 11px; font-weight: 800;
-    width: 20px; height: 20px; border-radius: 50%;
+.login-btn-main:active { transform: scale(0.98); }
+.login-icon {
+    width: 24px; height: 24px; background: white; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    margin-right: 5px; 
+}
+.login-icon svg { width: 14px; height: 14px; fill: #8b5cf6; }
+
+
+/* --- Header (Existing) --- */
+.header {
+    padding: 10px 16px;
+    background: rgba(9, 9, 11, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 100;
+    height: 60px;
+    flex-shrink: 0;
+    position: relative;
 }
 
-.header-left { display: flex; gap: 8px; align-items: center; }
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+.header-title:active { background: rgba(255,255,255,0.05); }
 
-.token-btn {
-    background: rgba(245, 158, 11, 0.1); 
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: var(--pi-gold);
-    padding: 0 12px; height: 34px; border-radius: 18px;
-    font-size: 12px; font-weight: 700; cursor: pointer;
+.header-chevron {
+    width: 20px; height: 20px; fill: var(--text-sub);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-circle {
+    width: 34px;
+    height: 34px;
+    background: #1c241d;
+    border: 1px solid #2d382e;
+    color: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+    box-shadow: 0 0 15px rgba(209, 250, 49, 0.1);
+    transition: 0.3s;
+}
+
+/* Mode Color Shifts */
+body.mode-chat .logo-circle {
+    background: #1e293b; border-color: #1e3a8a; color: var(--accent-chat);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+body.mode-chat .status-dot { background: var(--accent-chat); box-shadow: 0 0 8px var(--accent-chat); }
+body.mode-chat .send-btn { background: var(--accent-chat); color: white; }
+body.mode-chat .send-btn svg { fill: white; }
+body.mode-chat .input-box:focus { border-color: var(--accent-chat); }
+
+body.mode-video .logo-circle {
+    background: #3f1016; border-color: #881337; color: var(--accent-video);
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+}
+body.mode-video .status-dot { background: var(--accent-video); box-shadow: 0 0 8px var(--accent-video); }
+body.mode-video .send-btn { background: var(--accent-video); color: white; }
+body.mode-video .send-btn svg { fill: white; }
+body.mode-video .input-box:focus { border-color: var(--accent-video); }
+
+.header h1 {
+    font-size: 15px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+    display: inline-block;
+}
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Action Buttons */
+.action-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    transition: 0.2s;
+    font-size: 12px;
     display: flex; align-items: center; gap: 6px;
+    height: 32px;
+}
+.action-btn:active { transform: scale(0.95); }
+.action-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* --- Gallery Modal --- */
+.gallery-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9);
+    backdrop-filter: blur(15px);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+.gallery-header {
+    padding: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: rgba(9,9,11,0.8);
+}
+.gallery-title { font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.gallery-close {
+    background: transparent; border: none; color: var(--text-sub);
+    cursor: pointer; padding: 5px;
+}
+.gallery-close svg { width: 24px; height: 24px; fill: currentColor; }
+
+.gallery-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    align-content: start;
+}
+
+.gallery-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex; flex-direction: column;
+}
+.gallery-item img, .gallery-item video {
+    width: 100%; height: 100%; object-fit: cover;
+}
+.gallery-badges {
+    position: absolute; top: 6px; left: 6px; display: flex; gap: 4px;
+}
+.g-badge {
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;
+    color: white; border: 1px solid rgba(255,255,255,0.1);
+}
+.gallery-actions-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    padding: 10px; display: flex; justify-content: space-between; align-items: flex-end;
+    opacity: 0; transition: 0.2s;
+}
+.gallery-item:hover .gallery-actions-overlay { opacity: 1; }
+
+@media (max-width: 768px) {
+    .gallery-actions-overlay { opacity: 1; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); }
+}
+
+.g-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: none; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: 0.2s;
+}
+.g-btn.del { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.g-btn.dl { background: rgba(209, 250, 49, 0.2); color: #d1fa31; }
+.g-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+.empty-gallery-msg {
+    grid-column: 1 / -1;
+    text-align: center; color: var(--text-sub);
+    padding: 40px; font-size: 14px;
+}
+
+/* --- Model Menu --- */
+.model-menu-overlay {
+    position: absolute;
+    top: 60px; left: 0; right: 0;
+    background: rgba(9, 9, 11, 0.98);
+    backdrop-filter: blur(20px);
+    z-index: 90;
+    padding: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: curtainDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+@keyframes curtainDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.model-category {
+    font-size: 11px; color: var(--text-sub); margin-top: 8px; margin-bottom: 4px; padding-right: 4px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+}
+
+.model-option {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text-main);
+    cursor: pointer;
     transition: 0.2s;
 }
-.token-btn:active { transform: scale(0.95); }
-.token-icon { width: 14px; height: 14px; fill: currentColor; }
+.model-option:active { transform: scale(0.98); }
+.model-option.active {
+    border-color: var(--accent);
+    background: #1c241d;
+    box-shadow: 0 0 0 1px var(--accent);
+}
+.model-option[data-type="chat"].active {
+    border-color: var(--accent-chat);
+    background: #172033;
+    box-shadow: 0 0 0 1px var(--accent-chat);
+}
+.model-option[data-type="chat"].active .check-icon { fill: var(--accent-chat); }
 
-.lang-btn {
-    background: var(--card); border: 1px solid var(--border);
-    color: var(--text-main); padding: 0 12px; height: 34px; border-radius: 18px;
-    font-size: 11px; font-weight: 600; cursor: pointer;
+.model-option[data-type="video"].active {
+    border-color: var(--accent-video);
+    background: #3f1016;
+    box-shadow: 0 0 0 1px var(--accent-video);
+}
+.model-option[data-type="video"].active .check-icon { fill: var(--accent-video); }
+
+.model-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.model-desc { font-size: 11px; color: var(--text-sub); display: flex; align-items: center; gap: 6px;}
+.badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800; }
+.badge.vis { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.badge.img { background: rgba(209, 250, 49, 0.2); color: #d1fa31; }
+.badge.vid { background: rgba(244, 63, 94, 0.2); color: #f43f5e; }
+
+.check-icon { width: 20px; height: 20px; fill: var(--accent); opacity: 0; transition: 0.2s; }
+.model-option.active .check-icon { opacity: 1; }
+
+/* --- Chat Area --- */
+.chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+    padding-bottom: 20px; 
 }
 
-/* --- Chat & Content --- */
-.chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 20px; }
-.message { display: flex; flex-direction: column; max-width: 90%; animation: slideUp 0.3s ease; }
-.message.user { align-self: flex-end; } 
-.message.bot { align-self: flex-start; }
+/* Messages */
+.message {
+    display: flex; flex-direction: column; max-width: 90%; 
+    animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+.message.user { align-self: flex-end; align-items: flex-end; }
+.message.bot { align-self: flex-start; align-items: flex-start; }
 
 .msg-bubble {
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 18px;
     font-size: 14px;
     line-height: 1.5;
+    position: relative;
     word-wrap: break-word;
-    display: flex; 
-    flex-direction: column; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
-/* User Bubble */
-.message.user .msg-bubble { 
-    background: linear-gradient(135deg, #4c1d95 0%, #2e1065 100%);
-    color: #fff; border: 1px solid rgba(124, 58, 237, 0.3);
-    border-bottom-left-radius: 4px; 
+.message.user .msg-bubble {
+    background: var(--user-msg-bg);
+    color: #fff;
+    border-bottom-right-radius: 4px; 
 }
 
-.message.bot .msg-bubble {
-    background: transparent;
-    padding: 0;
+.user-img-display {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: block;
+}
+
+.message.bot.text-msg .msg-bubble {
+    background: var(--bot-msg-bg);
+    color: var(--text-main);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    overflow: hidden;
-    width: 100%;
-    max-width: 320px;
-}
-
-.no-token-card {
-    background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 20px; padding: 20px; text-align: center;
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-}
-.no-token-text { color: #fca5a5; font-size: 14px; font-weight: 600; margin-bottom: 5px; }
-.buy-now-btn {
-    background: var(--pi-gold); color: black; border: none;
-    padding: 8px 24px; border-radius: 20px; font-weight: 700; font-size: 12px;
-    cursor: pointer; display: flex; align-items: center; gap: 6px;
-}
-
-/* Animation & Image Placeholders */
-.loading-box {
-    width: 280px; 
-    aspect-ratio: 1/1; 
-    border-radius: 20px;
-    position: relative; overflow: hidden;
-    background: #000; border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-}
-.blur-wave {
-    position: absolute; inset: -50%;
-    background: conic-gradient(from 0deg, transparent 0deg, var(--pi-purple) 100deg, transparent 180deg, var(--pi-gold) 260deg, transparent 360deg);
-    filter: blur(40px); opacity: 0.5;
-    animation: rotateWave 4s linear infinite;
-}
-.loading-text {
-    position: relative; z-index: 2; font-weight: 700; font-size: 13px; color: white;
-    background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 30px;
-    backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1);
-    animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes rotateWave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes pulse { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
-
-/* Image Style: Fixed smooth transition */
-.image-container {
-    position: relative;
-    width: 100%;
-    min-height: 280px; 
-    background: #000;
-}
-.msg-image { 
-    width: 100%; height: auto; display: block; 
-    opacity: 0; transition: opacity 0.8s ease-in; 
-}
-.msg-image.loaded { opacity: 1; }
-
-.download-bar {
-    padding: 12px;
-    background: #141414;
-    display: flex;
-    justify-content: center;
-    border-top: 1px solid #222;
+    border-bottom-left-radius: 4px;
     width: 100%;
 }
-.d-btn { background: var(--pi-gold); color: black; border: none; padding: 10px 0; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; width: 100%; transition: 0.2s; }
 
-/* --- Footer --- */
-.footer-container { background: #050505; border-top: 1px solid var(--border); padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 100; position: relative; }
-.control-bar { display: flex; gap: 10px; padding: 8px 12px 0 12px; position: relative; }
-
-.footer-btn {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 6px 12px; color: var(--text-sub);
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    display: flex; align-items: center; gap: 8px; min-width: 90px; justify-content: space-between;
-    transition: 0.2s;
-}
-.input-row { display: flex; gap: 8px; padding: 10px 12px; align-items: flex-end; }
-.input-box { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 14px 18px; color: white; outline: none; resize: none; max-height: 120px; font-size: 15px; }
-.send-btn { 
-    width: 48px; height: 48px; border-radius: 50%; 
-    background: var(--primary-gradient); border: none; cursor: pointer; 
-    display: flex; align-items: center; justify-content: center; 
-    transition: 0.3s; font-weight: 700; font-size: 12px;
-}
-.send-btn:disabled { background: #333; cursor: not-allowed; }
-.countdown-text { color: white; font-size: 10px; text-align: center; line-height: 1; }
-
-/* --- Menus --- */
-.model-menu, .aspect-menu-dropdown {
-    background: rgba(18, 18, 18, 0.98); backdrop-filter: blur(20px);
-    border: 1px solid var(--border); border-radius: 16px;
-    display: none; flex-direction: column; gap: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-}
-.model-menu { position: absolute; top: 60px; left: 0; right: 0; z-index: 90; padding: 10px; }
-.aspect-menu-dropdown { position: absolute; bottom: 100%; right: 12px; width: 200px; margin-bottom: 8px; padding: 8px; z-index: 200; }
-
-.menu-option {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; cursor: pointer;
-    border: 1px solid transparent; transition: 0.2s;
-}
-.menu-option.active { border-color: var(--pi-purple); background: rgba(124, 58, 237, 0.1); }
-.cost-badge-menu {
-    background: rgba(255,255,255,0.1); color: var(--pi-gold);
-    font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700;
+body.lang-ar .message.bot.text-msg .msg-bubble,
+body.lang-ar .message.user .msg-bubble {
+    direction: rtl;
+    text-align: right;
 }
 
-/* --- Modals --- */
-.modal-overlay { 
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 500; 
-    display: none; flex-direction: column; justify-content: center; align-items: center;
-}
-.modal-window {
-    width: 90%; max-width: 400px; max-height: 80vh; background: #111;
-    border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
-    display: flex; flex-direction: column;
-}
-.modal-header { 
-    padding: 15px; border-bottom: 1px solid var(--border); 
-    display: flex; justify-content: space-between; align-items: center; background: #18181b; 
-}
+.message.bot.text-msg .msg-bubble p { margin: 0 0 8px 0; }
+.message.bot.text-msg .msg-bubble p:last-child { margin-bottom: 0; }
+.message.bot.text-msg .msg-bubble b, .message.bot.text-msg .msg-bubble strong { color: var(--accent-chat); font-weight: 700; }
+.message.bot.text-msg .msg-bubble ul, .message.bot.text-msg .msg-bubble ol { margin: 5px 0; padding-right: 20px; }
+.message.bot.text-msg .msg-bubble li { margin-bottom: 4px; }
 
-/* Buy Grid */
-.buy-grid { padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.buy-card {
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    padding: 15px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer; transition: 0.2s;
-}
-.buy-card:active { border-color: var(--pi-gold); background: rgba(245, 158, 11, 0.1); }
-.buy-info { display: flex; flex-direction: column; gap: 4px; }
-.buy-amount { color: var(--text-main); font-weight: 700; font-size: 16px; }
-.buy-cost { color: var(--pi-gold); font-size: 13px; font-weight: 600; }
-.buy-icon { width: 24px; height: 24px; fill: var(--pi-gold); }
-
-/* --- Gallery Styling --- */
-.gallery-grid { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 12px; 
-    padding-bottom: 50px;
-    display: grid; 
-    grid-template-columns: repeat(2, 1fr); 
-    grid-auto-rows: min-content; 
-    gap: 15px; 
-    align-content: start;
-}
-.gallery-item { 
-    position: relative; 
-    border-radius: 12px; 
-    overflow: hidden; 
-    border: 1px solid var(--border); 
-    aspect-ratio: 1/1; 
-    background: #18181b;
-    display: flex;
-    flex-direction: column;
-}
-.gallery-item img {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-}
-/* Overlay Actions */
-.gallery-actions { 
-    position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 10px; 
-    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 100%);
-    display: flex; gap: 8px; 
-    z-index: 5;
-    backdrop-filter: blur(2px);
-}
-.g-btn { 
-    flex: 1; border: none; padding: 8px 0; font-size: 11px; 
-    cursor: pointer; color: white; border-radius: 6px; font-weight: 700; 
-    display: flex; align-items: center; justify-content: center; transition: 0.2s;
-    text-transform: uppercase; letter-spacing: 0.5px;
-}
-.g-del { background: rgba(239, 68, 68, 0.6); color: white; border: 1px solid rgba(239, 68, 68, 0.3); }
-.g-del:active { background: rgba(239, 68, 68, 0.8); }
-.g-down { background: var(--pi-gold); color: black; border: 1px solid var(--pi-gold); }
-.g-down:active { opacity: 0.9; }
-
-/* Download Help Modal Styling */
-.dl-help-icon { font-size: 40px; margin-bottom: 10px; }
-.dl-help-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; color: var(--pi-gold); }
-.dl-help-text { color: #ccc; text-align: center; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
-.dl-copy-box { 
-    background: rgba(255,255,255,0.1); border: 1px dashed #555; 
-    padding: 10px; border-radius: 8px; font-family: monospace; font-size: 12px; color: var(--pi-gold);
-    width: 100%; text-align: center; margin-bottom: 15px; word-break: break-all;
-}
-
-@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-/* --- Code box styling --- */
-.markdown-body pre {
-    background: #1e1e1e;
-    padding: 10px;
-    border-radius: 8px;
-    overflow-x: auto;
-    border: 1px solid #333;
-}
-.markdown-body code {
-    font-family: monospace;
-}
-.markdown-body p { margin-bottom: 8px; }
-
-.menu-category-title {
-    color: var(--pi-gold); 
-    font-size: 11px; 
-    font-weight: 800; 
-    margin: 10px 5px 5px 5px;
-    text-transform: uppercase; 
-    letter-spacing: 1px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding-bottom: 4px;
-}
-
-.model-tag { 
-    font-size: 9px; 
-    padding: 2px 5px; 
-    border-radius: 4px; 
-    font-weight: 700; 
-    margin-inline-end: 6px; 
-    display: inline-block;
-}
-.tag-img { background: rgba(245, 158, 11, 0.15); color: var(--pi-gold); }
-.tag-txt { background: rgba(124, 58, 237, 0.15); color: #a78bfa; }
-
-.chat-loading-bubble {
-    padding: 15px 20px;
-    background: #1e1e1e;
-    border-radius: 20px;
-    border-top-left-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    width: fit-content;
-    border: 1px solid var(--border);
-}
-
-.typing-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--pi-gold);
-    border-radius: 50%;
-    animation: typing 1.4s infinite ease-in-out both;
-}
-
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-    0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-    40% { transform: scale(1); opacity: 1; }
-}
-
-.image-loading-box {
-    width: 100%;
-    aspect-ratio: 1/1;
-    border-radius: 20px;
-    background: #111;
-    border: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
+/* Code Block */
 .code-wrapper {
-    margin: 10px 0;
-    border-radius: 8px;
+    background: #111;
     border: 1px solid #333;
+    border-radius: 8px;
+    margin: 10px 0;
     overflow: hidden;
-    background: #1e1e1e;
+    direction: ltr; 
+    text-align: left;
 }
-
 .code-header {
+    background: #222;
+    padding: 6px 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #252526;
-    padding: 6px 12px;
     border-bottom: 1px solid #333;
 }
-
-.code-lang {
-    font-size: 12px;
-    color: #9cdcfe;
-    font-family: monospace;
-    font-weight: bold;
-}
-
+.code-lang { font-size: 11px; color: #aaa; font-weight: bold; text-transform: uppercase; }
 .copy-code-btn {
+    background: transparent; border: none; color: #fff; cursor: pointer;
+    font-size: 11px; display: flex; align-items: center; gap: 4px; opacity: 0.8;
+}
+.copy-code-btn:hover { opacity: 1; }
+pre { margin: 0; padding: 12px; overflow-x: auto; }
+code { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #e5e5e5; }
+
+.msg-footer {
+    display: flex; justify-content: flex-end; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;
+}
+body.lang-ar .msg-footer { justify-content: flex-start; }
+.copy-msg-btn {
+    background: transparent; border: none; color: var(--text-sub);
+    font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+}
+.copy-msg-btn:hover { color: var(--text-main); }
+
+/* Image/Video Output */
+.message.bot .msg-bubble.image-bubble {
     background: transparent;
-    border: none;
-    color: #ccc;
-    font-size: 11px;
-    cursor: pointer;
+    padding: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    width: 100%; max-width: 320px; 
+}
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 250px;
+    background: #111;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+}
+.msg-image, .msg-video {
+    display: block; width: 100%; height: auto;
+    opacity: 0; transition: opacity 0.5s ease;
+}
+.msg-image.loaded, .msg-video.loaded { opacity: 1; }
+
+.download-btn-container {
+    padding: 10px;
+    background: rgba(24, 24, 27, 0.9);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.btn-download-hd {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--accent);
+    color: black;
+    text-decoration: none;
+    padding: 10px 0;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    width: 100%;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+}
+.btn-download-hd:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-download-hd svg { width: 16px; height: 16px; fill: black; }
+
+/* Loader */
+.blur-wave-container {
+    width: 280px; height: 280px;
+    border-radius: 20px;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+}
+.blur-wave-bg {
+    position: absolute; inset: -50%;
+    background: conic-gradient(
+        from 0deg, transparent 0deg, var(--accent) 60deg, transparent 120deg, #a855f7 180deg, transparent 240deg, var(--accent) 300deg, transparent 360deg
+    );
+    filter: blur(40px); opacity: 0.4;
+    animation: rotateWave 3s linear infinite;
+}
+@keyframes rotateWave { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.typing-indicator {
+    padding: 12px 20px; background: var(--bot-msg-bg); border-radius: 20px;
+    border: 1px solid var(--border); display: flex; gap: 6px;
+}
+.typing-dot {
+    width: 8px; height: 8px; background: var(--text-sub); border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+@keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+/* --- Input Area --- */
+.input-area {
+    padding: 12px;
+    background: #09090b; 
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    flex-shrink: 0; z-index: 100;
+}
+
+/* --- Input Toolbar (Aspect Ratio) --- */
+.input-toolbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 4px 4px 4px;
+    position: relative;
+}
+
+.toolbar-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text-sub); border-radius: 8px;
+    padding: 6px 10px; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; transition: 0.2s;
+}
+.toolbar-btn:active, .toolbar-btn.active { border-color: var(--accent); color: var(--text-main); }
+.toolbar-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* Aspect Menu Curtain */
+.aspect-menu {
+    display: none; 
+    flex-direction: row;
+    gap: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    padding: 6px; border-radius: 8px;
+    position: absolute; bottom: 100%; left: 4px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 50;
+    animation: slideUpMenu 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUpMenu { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.aspect-option {
+    padding: 6px 10px; background: transparent; border: 1px solid transparent;
+    color: var(--text-sub); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+}
+.aspect-option:hover { background: rgba(255,255,255,0.05); }
+.aspect-option.selected { background: rgba(209, 250, 49, 0.1); color: var(--accent); border-color: var(--accent); }
+
+
+.preview-container {
+    display: none;
+    padding: 8px 12px;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    align-items: center; justify-content: space-between;
+}
+.preview-img-box {
+    display: flex; align-items: center; gap: 10px;
+}
+.preview-thumb {
+    width: 40px; height: 40px;
+    border-radius: 6px; object-fit: cover;
+    border: 1px solid var(--border);
+}
+.preview-info { font-size: 12px; color: var(--text-sub); }
+.remove-img-btn {
+    background: transparent; border: none; color: var(--error);
+    cursor: pointer; padding: 5px;
+}
+
+.input-row { display: flex; gap: 8px; align-items: flex-end; }
+
+.attach-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-sub);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
     transition: 0.2s;
 }
-.copy-code-btn:hover { color: white; }
+.attach-btn.has-file { color: var(--accent-chat); border-color: var(--accent-chat); }
+.attach-btn svg { width: 20px; height: 20px; fill: currentColor; }
 
-.markdown-body pre {
-    margin: 0 !important;
-    border: none !important;
-    border-radius: 0 !important;
-    background: transparent !important;
+.input-box {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 12px 16px;
+    color: white; font-size: 14px;
+    max-height: 100px; overflow-y: auto; resize: none;
+    outline: none; line-height: 1.4;
+    transition: border-color 0.2s;
 }
+.input-box:focus { border-color: var(--accent); }
+.send-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: black; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+}
+.send-btn svg { width: 18px; height: 18px; fill: black; margin-right: 2px; }
 
-.msg-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #333;
+/* --- Empty State --- */
+.empty-state {
+    text-align: center; margin-top: auto; margin-bottom: auto;
+    color: var(--text-sub); padding: 20px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; height: 100%;
 }
-
-.copy-msg-btn {
-    background: rgba(255,255,255,0.1);
-    border: none;
-    color: #ccc;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+.empty-logo {
+    width: 60px; height: 60px;
+    background: var(--card);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 15px;
+    color: var(--accent); font-size: 26px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }
-.copy-msg-btn:hover { background: rgba(255,255,255,0.2); color: white; }
 </style>
 </head>
 <body>
 
-    <div id="landingPage" class="landing-overlay">
-        <button class="landing-lang-btn" onclick="toggleLanguage()" id="landingLangBtn">AR</button>
-
-        <div class="landing-logo-text">AiWay</div>
-        <div class="landing-desc" id="txtLandingDesc">Generate professional images using state-of-the-art AI technologies</div>
-        
-        <div class="features-title" id="txtFeaturesTitle">Site Supports</div>
-       <div class="features-container">
-            <button class="feature-btn f-images">
-                <span>Ai Images</span>
-            </button>
+    <div id="landingPage" class="landing-page">
+        <div class="landing-header">
+            <button class="action-btn" id="langBtnLanding" onclick="toggleLanguage()">AR</button>
+        </div>
+        <div class="landing-content">
+            <h1 class="brand-title">
+                <span class="brand-ai">Ai</span><span class="brand-way">Way</span>
+            </h1>
             
-            <button class="feature-btn f-video">
-                <span>Ai Video</span>
-                <span class="soon-badge" id="txtSoonVideo">Soon</span>
-            </button>
+            <p class="landing-desc" id="landDesc">
+                Generate professional images using state-of-the-art AI technologies
+            </p>
+            
+            <h3 class="site-supports-label" id="landSupport">SITE SUPPORTS</h3>
+            
+            <div class="features-grid">
+                <div class="feature-card active">
+                    <span class="feature-text" id="featText">Ai Chat</span>
+                </div>
+                <div class="feature-card active">
+                    <span class="feature-text" id="featVideo">Ai Video</span>
+                </div>
+                <div class="feature-card active">
+                    <span class="feature-text" id="featImg">Ai Images</span>
+                </div>
+            </div>
 
-            <button class="feature-btn f-images">
-                <span>Ai Chat</span>
+            <button class="login-btn-main" onclick="enterApp()">
+                <span id="btnLogin">Pi Login</span>
+                <div class="login-icon">
+                    <svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </div>
             </button>
         </div>
-
-        <button class="pi-login-btn" onclick="authenticatePi()">
-            <svg viewBox="0 0 32 32"><path d="M16 32C7.163 32 0 24.837 0 16S7.163 0 16 0s16 7.163 16 16-7.163 16-16 16zm-2.5-22h-3v12h3V10zm8 0h-3v12h3V10z"/></svg>
-            <span id="txtLogin">Pi Login</span>
-        </button>
     </div>
 
     <div class="header">
-        <div class="header-title-area" onclick="toggleModelMenu()">
-            <div style="font-weight:700; font-size:16px; display:flex; align-items:center;" id="headerModelName">
-                Imagen 4
+        <div class="header-title" onclick="toggleModelMenu()">
+            <div class="logo-circle" id="logoCircle">G</div>
+            <div>
+                <h1 id="headerModelName">FLUX.2 Klein 9B</h1>
+                <div style="font-size: 11px; color: var(--text-sub); display:flex; align-items:center; gap:5px; margin-top:2px;">
+                    <span class="status-dot"></span> <span id="modelModeText">Image Gen</span>
+                </div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#777" id="modelChevron" style="transition:0.3s; margin-inline-start:5px;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+            <svg class="header-chevron" id="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
         </div>
-        <div class="header-left">
-            <button class="lang-btn" onclick="toggleLanguage()" id="langBtn">AR</button>
-            <button class="token-btn" onclick="openBuyModal()">
-                <svg class="token-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05 1.18 1.91 2.53 1.91 1.38 0 2.53-.83 2.53-1.94 0-.85-.38-1.55-2.03-1.95l-1.04-.25c-2.31-.55-3.62-1.89-3.62-3.63 0-1.86 1.34-3.2 3.14-3.56V4h2.67v1.9c1.68.39 2.92 1.43 3.08 3.13h-2.01c-.13-.88-.95-1.57-2.19-1.57-1.32 0-2.19.85-2.19 1.83 0 .74.43 1.35 2.17 1.77l.82.2c2.51.6 3.84 1.95 3.84 3.73 0 1.96-1.5 3.33-3.22 3.66z"/></svg>
-                <span id="tokenBalance">0</span> π
+        <div class="header-actions">
+            <button class="action-btn" id="galleryBtn" onclick="openGallery()">
+                <svg viewBox="0 0 24 24"><path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/></svg>
             </button>
+            <button class="action-btn" id="langBtn" onclick="toggleLanguage()">AR</button>
         </div>
     </div>
 
-    <div class="model-menu" id="modelMenu"></div>
+    <div class="gallery-modal" id="galleryModal">
+        <div class="gallery-header">
+            <div class="gallery-title" id="galleryTitle">Gallery</div>
+            <button class="gallery-close" onclick="closeGallery()"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+        </div>
+        <div class="gallery-content" id="galleryGrid">
+            </div>
+    </div>
+
+    <div class="model-menu-overlay" id="modelMenu">
+        </div>
 
     <div class="chat-container" id="chatContainer">
-        <div style="text-align:center; color:#555; margin-top:50px;" id="emptyMsg">
-            Welcome to AIWay <br> Select a model and imagine
+        <div class="empty-state" id="emptyState">
+            <div class="empty-logo" id="emptyLogo">✨</div>
+            <p id="txtWelcome">Choose a model.<br>Image, Video, or Chat.</p>
         </div>
     </div>
 
-    <div class="footer-container">
-        <div class="control-bar">
-            <button class="footer-btn" onclick="openGallery()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4z"/></svg>
-                <span id="txtGallery">Gallery</span>
+    <div class="input-area">
+        <div class="input-toolbar">
+            <button class="toolbar-btn" id="aspectBtn" onclick="toggleAspectMenu()">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-10-7h2v5h-2zm-4-3h2v8H7zm8 5h2v3h-2z"/></svg>
+                <span id="aspectLabel">1:1</span>
             </button>
             
-            <div class="aspect-menu-dropdown" id="aspectMenu"></div>
-            <button class="footer-btn" id="aspectTriggerBtn" onclick="toggleAspectMenu(event)">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span id="currentAspectIcon"></span>
-                    <span id="currentAspectLabel">1:1</span>
-                </div>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="#777"><path d="M7 10l5 5 5-5z"/></svg>
+            <div class="aspect-menu" id="aspectMenu">
+                <div class="aspect-option selected" onclick="selectAspect('1:1')" data-ratio="1:1">1:1</div>
+                <div class="aspect-option" onclick="selectAspect('16:9')" data-ratio="16:9">16:9</div>
+                <div class="aspect-option" onclick="selectAspect('9:16')" data-ratio="9:16">9:16</div>
+                <div class="aspect-option" onclick="selectAspect('4:3')" data-ratio="4:3">4:3</div>
+                <div class="aspect-option" onclick="selectAspect('3:4')" data-ratio="3:4">3:4</div>
+            </div>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-img-box">
+                <img id="previewThumb" class="preview-thumb" src="" alt="">
+                <div class="preview-info" id="previewInfo">Image attached</div>
+            </div>
+            <button class="remove-img-btn" onclick="clearImageAttachment()">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z"/></svg>
             </button>
         </div>
 
         <div class="input-row">
-            <textarea id="promptInput" class="input-box" rows="1" placeholder="Imagine anything..." dir="auto"></textarea>
-            <button class="send-btn" id="sendBtn" onclick="sendPrompt()">
-                <svg id="sendIcon" width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                <span id="countdownEl" class="countdown-text" style="display:none;"></span>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(this)">
+            
+            <button class="attach-btn" id="attachBtn" onclick="document.getElementById('fileInput').click()">
+                <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
             </button>
-        </div>
-    </div>
 
-    <div id="galleryModal" class="modal-overlay">
-        <div class="modal-window" style="height:80%;">
-            <div class="modal-header">
-                <span style="font-weight:700; color:white;" id="txtGalleryTitle">My Gallery</span>
-                <button onclick="document.getElementById('galleryModal').style.display='none'" style="background:none; border:none; color:white; font-size:24px;">✕</button>
-            </div>
-            <div class="gallery-grid" id="galleryGrid"></div>
-        </div>
-    </div>
-
-    <div id="buyModal" class="modal-overlay">
-        <div class="modal-window">
-            <div class="modal-header">
-                <span style="font-weight:700; color:white;" id="txtBuyTitle">Buy Tokens</span>
-                <button onclick="document.getElementById('buyModal').style.display='none'" style="background:none; border:none; color:white; font-size:24px;">✕</button>
-            </div>
-            <div class="buy-grid" id="buyGrid"></div>
-        </div>
-    </div>
-
-    <div id="downloadInfoModal" class="modal-overlay">
-        <div class="modal-window" style="padding:20px; align-items:center;">
-            <div class="dl-help-icon">📋</div>
-            <div class="dl-help-title" id="txtDlTitle">Link Copied!</div>
-            <div class="dl-help-text" id="txtDlDesc">
-                Due to Pi Browser limitations, please paste this link into Google Chrome to download the image immediately.
-            </div>
-            <div class="dl-copy-box" id="dlLinkBox">...</div>
-            <button class="g-btn g-down" onclick="document.getElementById('downloadInfoModal').style.display='none'" style="width:100%; max-width:200px; padding:12px;">OK</button>
+            <textarea id="promptInput" class="input-box" rows="1" placeholder="Imagine anything..." dir="auto"></textarea>
+            
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
         </div>
     </div>
 
 <script>
-// دالة النسخ الذكية (تقرأ من الصفحة مباشرة)
-// --- دالة نسخ الكود (المعدلة) ---
-function copyCodeFromBlock(btn, encodedCode) {
-    // لم نعد بحاجة للبحث في الصفحة، الكود وصل للدالة مباشرة
-    if (!encodedCode) return;
+    /* =========================================
+       API & Config
+       ========================================= */
+    const API_KEY = "pk_6wxVJxXunTeTSYJd"; 
 
-    try {
-        // فك تشفير الكود ليود لصورته الأصلية
-        const textToCopy = decodeURIComponent(encodedCode);
-
-        // عملية النسخ
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '✅ Copied!';
-            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
-        }).catch(err => {
-            // Fallback للأجهزة القديمة
-            const textarea = document.createElement('textarea');
-            textarea.value = textToCopy;
-            textarea.style.position = 'fixed';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '✅ Copied!';
-            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
-        });
-    } catch (e) {
-        console.error("Copy Error:", e);
-    }
-}
-
-
-/* =========================
-   CONFIG
-   ========================= */
-const MODELS = [
-    { id: 'openai-large', category: 'Chat & Vision', name: 'GPT-5.2', type: 'text', cost: 3, desc: 'Deep Reasoning' },
-    { id: 'openai-fast', category: 'Chat & Vision', name: 'GPT-5 Nano', type: 'text', cost: 1, desc: 'Fast Chat' },
-    { id: 'openai', category: 'Chat & Vision', name: 'GPT-5 Mini', type: 'text', cost: 1, desc: 'Balanced' },
-
-    { id: 'imagen-4', category: 'Image Generation', name: 'Imagen 4', type: 'image', cost: 1, desc: 'High Quality' },
-    { id: 'gptimage', category: 'Image Generation', name: 'Chat GPT Image', type: 'image', cost: 5, desc: 'Creative' },
-    { id: 'klein', category: 'Image Generation', name: 'FLUX.2 Klein 4B', type: 'image', cost: 2, desc: 'Fast Gen' },
-    { id: 'klein-large', category: 'Image Generation', name: 'FLUX.2 Klein 9B', type: 'image', cost: 4, desc: 'Detailed' }
-];
-
-const RATIOS = [
-    { id: 'square', label: '1:1', w: 1024, h: 1024, icon: '<rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>' },
-    { id: 'portrait', label: '9:16', w: 768, h: 1344, icon: '<rect x="6" y="3" width="12" height="18" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>' },
-    { id: 'landscape', label: '16:9', w: 1344, h: 768, icon: '<rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>' },
-    { id: 'wide', label: '21:9', w: 1536, h: 640, icon: '<rect x="2" y="8" width="20" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>' }
-];
-
-const PACKAGES = [
-    { usd: 1, tokens: 150 },
-    { usd: 5, tokens: 750 },
-    { usd: 10, tokens: 1500 }
-];
-
-const TRANSLATIONS = {
-    ar: {
-        gallery: "معرضي", welcome: "أهلاً بك في AIWay <br> اختر الموديل واكتب ما تتخيله",
-        placeholder: "تخيل أي شيء...", generating: "جاري الإنشاء...", download: "تحميل",
-        delete: "حذف", error: "خطأ", galleryTitle: "معرض صوري", buyTitle: "شراء توكين",
-        noImages: "لا توجد صور محفوظة.", confirmDel: "هل أنت متأكد من الحذف؟", wait: "انتظر",
-        sec: "ث", noImage: "مفيش صورة للتحميل",
-        buy: "شراء", tokens: "توكين", pi: "π", noTokens: "رصيد التوكين نفذ 😢", buyNow: "شراء الآن",
-        cost: "توكين", done: "تم", desc: "توليد صور احترافية باستخدام أحدث تقنيات الذكاء الاصطناعي",
-        login: "Pi Login", features: "الموقع يدعم", soon: "قريباً", usd: "دولار",
-        dlTitle: "تم نسخ رابط الصورة! 📋",
-        dlDesc: "بسبب قيود متصفح Pi حالياً، يرجى لصق الرابط في متصفح Google Chrome ليتم تنزيل الصورة فوراً.\nهذا حل مؤقت حتى يتم تحديث المتصفح.",
-        rateLimit: "ضغط عالي! انتظر 25 ثانية..."
-    },
-    en: {
-        gallery: "Gallery", welcome: "Welcome to AIWay <br> Select a model and imagine.",
-        placeholder: "Imagine anything...", generating: "Generating...", download: "Download",
-        delete: "Delete", error: "Error", galleryTitle: "My Gallery", buyTitle: "Buy Tokens",
-        noImages: "No saved images.", confirmDel: "Are you sure?", wait: "Wait",
-        sec: "s", noImage: "No image to download",
-        buy: "Buy", tokens: "Tokens", pi: "π", noTokens: "Out of Tokens 😢", buyNow: "Buy Now",
-        cost: "Tokens", done: "Done", desc: "Generate professional images using state-of-the-art AI technologies",
-        login: "Pi Login", features: "Site Supports", soon: "Soon", usd: "USD",
-        dlTitle: "Link Copied! 📋",
-        dlDesc: "Due to Pi Browser limitations, please paste this link into Google Chrome to download the image immediately.\nThis is a temporary solution.",
-        rateLimit: "High traffic! Wait 25s..."
-    }
-};
-
-/* =========================
-   STATE
-   ========================= */
-let currentLang = 'en';
-let currentModel = 'imagen-4';
-let currentWidth = 1024;
-let currentHeight = 1024;
-let currentRatioId = 'square';
-let piUser = null;
-let chatHistory = [];
-let cooldownEndTime = 0;
-let currentPiPrice = 40.0;
-
-/* =========================
-   SAFE HELPERS (FIXES)
-   ========================= */
-function safeRemove(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-}
-
-function normalizeMessages(list) {
-    return (Array.isArray(list) ? list : [])
-        .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-        .slice(-12);
-}
-
-function renderMarkdownSafe(markdown) {
-    const md = String(markdown || "");
-    let dirty = "";
-    try { dirty = marked.parse(md); } catch (e) { dirty = md; }
-
-    let safe = dirty;
-    if (window.DOMPurify && typeof DOMPurify.sanitize === "function") {
-        safe = DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
-    }
-
-    // fallback لو الـ markdown خرج فاضي أو اتكسر
-    const plain = (safe || "").replace(/<[^>]*>/g, '').trim();
-    if (!plain || plain.length < 2) {
-        const escaped = md
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-        return `<pre style="white-space:pre-wrap; margin:0; font-family:monospace; color:#ddd;">${escaped}</pre>`;
-    }
-    return safe;
-}
-
-/* =========================
-   MARKED CONFIG (CLEAN)
-   ========================= */
-
-const renderer = new marked.Renderer();
-renderer.code = function(code, language) {
-    const validLang = language || 'plaintext';
-    
-    // 1. تنظيف الكود للعرض في الشاشة (HTML)
-    const escapedDisplayCode = String(code || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    // 2. تشفير الكود الأصلي لوضعه داخل الزر (عشان النسخ يكون سليم 100%)
-    // نستخدم encodeURIComponent عشان لو الكود فيه علامات تنصيص ميبوظش الزر
-    const encodedRawCode = encodeURIComponent(String(code || ""));
-
-    return `
-    <div class="code-wrapper">
-        <div class="code-header">
-            <span class="code-lang">${validLang}</span>
-            <button class="copy-code-btn" type="button" onclick="copyCodeFromBlock(this, '${encodedRawCode}')">
-                📋 Copy Code
-            </button>
-        </div>
-        <pre><code class="language-${validLang}">${escapedDisplayCode}</code></pre>
-    </div>`;
-};
-marked.setOptions({ renderer: renderer });
-
-
-function copyCodeBlock(btn) {
-    // جلب الكود المشفر من خاصية data-code
-    const encodedData = btn.getAttribute('data-code');
-    if (!encodedData) return;
-    
-    try {
-        // فك التشفير
-        const code = decodeURIComponent(encodedData);
-        // استدعاء دالة النسخ الأصلية
-        copyText(btn, code);
-    } catch (e) {
-        console.error("Copy Error:", e);
-    }
-}
-
-
-function copyText(btn, text) {
-    const value = String(text || "");
-    navigator.clipboard.writeText(value).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '✅ Copied!';
-        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-    }).catch(err => {
-        console.error('Failed to copy', err);
-        // fallback
-        try {
-            const ta = document.createElement("textarea");
-            ta.value = value;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '✅ Copied!';
-            setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-        } catch {
-            alert("Could not copy text.");
+    // Translation Data
+    const LANG = {
+        en: {
+            cat_img: "Image Gen",
+            cat_vid: "Video Gen",
+            cat_chat: "Chat & Vision",
+            mode_img: "Image Gen",
+            mode_vid: "Video Gen",
+            mode_chat: "Chat / Vision",
+            placeholder_img: "Describe image...",
+            placeholder_vid: "Describe video...",
+            placeholder_chat: "Message or upload image...",
+            welcome: "Choose a model.<br>Image, Video, or Chat.",
+            img_attached: "Image attached",
+            analyzing: "Analyzing image...",
+            drawing: "Generating image...",
+            making_vid: "Generating video...",
+            error_gen: "Generation failed.",
+            error_con: "Connection error.",
+            server_busy: "Server is congested. Please wait...",
+            copy: "Copy Text",
+            copied: "Copied!",
+            download_hd: "Download HD",
+            download_vid: "Download Video",
+            next_lang_btn: "AR",
+            gallery_title: "My Gallery",
+            empty_gallery: "No images or videos yet.",
+            ratio: "Ratio",
+            // Landing Page
+            land_desc: "Generate professional images using state-of-the-art AI technologies",
+            site_support: "SITE SUPPORTS",
+            feat_text: "Ai Chat", 
+            feat_video: "Ai Video",
+            feat_img: "Ai Images",
+            pi_login: "Pi Login"
+        },
+        ar: {
+            cat_img: "توليد الصور",
+            cat_vid: "توليد الفيديو",
+            cat_chat: "شات ورؤية",
+            mode_img: "توليد صور",
+            mode_vid: "توليد فيديو",
+            mode_chat: "شات / تحليل صور",
+            placeholder_img: "وصف الصورة...",
+            placeholder_vid: "وصف الفيديو...",
+            placeholder_chat: "اكتب رسالة أو ارفع صورة...",
+            welcome: "اختر الموديل المناسب.<br>صور، فيديو، أو شات.",
+            img_attached: "صورة مرفقة",
+            analyzing: "جاري تحليل الصورة...",
+            drawing: "جاري الرسم...",
+            making_vid: "جاري إنشاء الفيديو...",
+            error_gen: "فشل التوليد. حاول مرة أخرى.",
+            error_con: "حدث خطأ في الاتصال.",
+            server_busy: "هناك ضغط على السيرفر. انتظر قليلاً...",
+            copy: "نسخ النص",
+            copied: "تم النسخ!",
+            download_hd: "تحميل HD",
+            download_vid: "تحميل فيديو",
+            next_lang_btn: "EN",
+            gallery_title: "معرضي",
+            empty_gallery: "لا يوجد صور أو فيديوهات حتى الآن.",
+            ratio: "أبعاد",
+            // Landing Page
+            land_desc: "توليد صور احترافية باستخدام أحدث تقنيات الذكاء الاصطناعي",
+            site_support: "الموقع يدعم",
+            feat_text: "شات ذكي", 
+            feat_video: "فيديو ذكي",
+            feat_img: "صور ذكية",
+            pi_login: "تسجيل دخول Pi"
         }
-    });
-}
-
-const Pi = window.Pi;
-
-document.addEventListener('DOMContentLoaded', () => {
-    try { Pi.init({ version: "2.0", sandbox: false }); } catch (e) { console.error("Pi Init Error:", e); }
-
-    renderModelMenu();
-    renderAspectMenu();
-    updateAspectUI();
-    applyLanguage('en');
-    updateHeaderModelUI(); // ✅ FIX: بعد applyLanguage علشان placeholder يبقى صح حسب نوع الموديل
-    fetchPiPrice();
-    setInterval(fetchPiPrice, 10000);
-});
-
-async function fetchPiPrice() {
-    try {
-        const res = await fetch('/api/get-pi-price');
-        const data = await res.json();
-        if (data.price) {
-            currentPiPrice = data.price;
-            if (document.getElementById('buyModal').style.display === 'flex') {
-                renderBuyGrid();
-            }
-        }
-    } catch(e) { console.log("Using default price"); }
-}
-
-function toggleLanguage() {
-    currentLang = currentLang === 'ar' ? 'en' : 'ar';
-    const label = currentLang === 'ar' ? 'EN' : 'AR';
-    document.getElementById('langBtn').textContent = label;
-    document.getElementById('landingLangBtn').textContent = label;
-    applyLanguage(currentLang);
-    updateHeaderModelUI(); // ✅ FIX: لضمان placeholder الصحيح حسب نوع الموديل
-}
-
-function applyLanguage(lang) {
-    const t = TRANSLATIONS[lang];
-    document.getElementById('txtGallery').textContent = t.gallery;
-    document.getElementById('emptyMsg').innerHTML = t.welcome;
-    document.getElementById('promptInput').placeholder = t.placeholder;
-    document.getElementById('txtGalleryTitle').textContent = t.galleryTitle;
-    document.getElementById('txtBuyTitle').textContent = t.buyTitle;
-    document.getElementById('txtLandingDesc').textContent = t.desc;
-    document.getElementById('txtLogin').textContent = t.login;
-    document.getElementById('txtFeaturesTitle').textContent = t.features;
-
-    const soonVideo = document.getElementById('txtSoonVideo');
-    const soonText = document.getElementById('txtSoonText');
-    if (soonVideo) soonVideo.textContent = t.soon;
-    if (soonText) soonText.textContent = t.soon;
-
-    document.getElementById('txtDlTitle').textContent = t.dlTitle;
-    document.getElementById('txtDlDesc').innerHTML = t.dlDesc.replace(/\n/g, '<br>');
-
-    renderModelMenu();
-    renderBuyGrid();
-}
-
-async function authenticatePi() {
-    try {
-        const scopes = ['username', 'payments'];
-        const auth = await Pi.authenticate(scopes, onIncompletePayment);
-        if (auth.user) {
-            piUser = auth.user;
-            document.getElementById('landingPage').style.display = 'none';
-            fetchBalance();
-            loadChatHistory();
-        }
-    } catch (err) { console.error(err); alert("Auth Failed"); }
-}
-
-function onIncompletePayment(payment) { console.log("Incomplete Payment", payment); }
-
-async function fetchBalance() {
-    if (!piUser) return;
-    try {
-        const res = await fetch(`/api/get-balance?uid=${piUser.uid}`);
-        const data = await res.json();
-        document.getElementById('tokenBalance').textContent = data.balance || 0;
-    } catch (e) { console.error("Balance Error", e); }
-}
-
-function updateHeaderModelUI() {
-    const m = MODELS.find(x => x.id === currentModel) || MODELS[0];
-    currentModel = m.id;
-
-    const badge = `<span class="header-cost-badge">${m.cost}</span>`;
-    document.getElementById('headerModelName').innerHTML = `${m.name} ${badge}`;
-
-    const aspectBtn = document.getElementById('aspectTriggerBtn');
-    const input = document.getElementById('promptInput');
-    const t = TRANSLATIONS[currentLang];
-
-    if (m.type === 'text') {
-        aspectBtn.style.display = 'none';
-        input.placeholder = (currentLang === 'ar') ? "اسأل أي شيء..." : "Ask me anything...";
-    } else {
-        aspectBtn.style.display = 'flex';
-        input.placeholder = t.placeholder;
-    }
-}
-
-function renderModelMenu() {
-    const menu = document.getElementById('modelMenu');
-    menu.innerHTML = '';
-
-    const categories = [...new Set(MODELS.map(m => m.category))];
-
-    categories.forEach(cat => {
-        const title = document.createElement('div');
-        title.className = 'menu-category-title';
-        title.innerText = cat;
-        menu.appendChild(title);
-
-        const catModels = MODELS.filter(m => m.category === cat);
-
-        catModels.forEach(m => {
-            const div = document.createElement('div');
-            div.className = `menu-option ${m.id === currentModel ? 'active' : ''}`;
-            div.onclick = () => selectModel(m);
-
-            const tagType = m.type === 'image' ? 'tag-img' : 'tag-txt';
-            const tagLabel = m.type === 'image' ? 'IMG' : 'CHAT';
-
-            div.innerHTML = `
-                <div>
-                    <div style="font-weight:700; font-size:14px; color:white; display:flex; align-items:center;">
-                        ${m.name}
-                    </div>
-                    <div style="font-size:11px; color:#888; margin-top:3px;">
-                        <span class="model-tag ${tagType}">${tagLabel}</span> ${m.desc}
-                    </div>
-                </div>
-                <div style="font-size:11px; font-weight:bold; color:var(--pi-gold); background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:6px;">
-                    ${m.cost} π
-                </div>
-            `;
-            menu.appendChild(div);
-        });
-    });
-}
-
-function selectModel(m) {
-    currentModel = m.id;
-    updateHeaderModelUI();
-    toggleModelMenu();
-    renderModelMenu();
-}
-
-function toggleModelMenu() {
-    const menu = document.getElementById('modelMenu');
-    const chevron = document.getElementById('modelChevron');
-    const isHidden = menu.style.display === 'none' || menu.style.display === '';
-    menu.style.display = isHidden ? 'flex' : 'none';
-    chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-    if (isHidden) document.getElementById('aspectMenu').style.display = 'none';
-}
-
-function renderAspectMenu() {
-    const menu = document.getElementById('aspectMenu');
-    menu.innerHTML = '';
-    RATIOS.forEach(r => {
-        const div = document.createElement('div');
-        div.className = `menu-option ${r.id === currentRatioId ? 'active' : ''}`;
-        div.onclick = () => selectRatio(r);
-        div.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:white;">${r.icon}</svg>
-                <span style="font-size:13px; font-weight:600; color:white;">${r.label}</span>
-            </div>
-        `;
-        menu.appendChild(div);
-    });
-}
-
-function selectRatio(r) {
-    currentWidth = r.w;
-    currentHeight = r.h;
-    currentRatioId = r.id;
-    updateAspectUI();
-    document.getElementById('aspectMenu').style.display = 'none';
-    renderAspectMenu();
-}
-
-function updateAspectUI() {
-    const r = RATIOS.find(x => x.id === currentRatioId) || RATIOS[0];
-    document.getElementById('currentAspectLabel').textContent = r.label;
-    document.getElementById('currentAspectIcon').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none">${r.icon}</svg>`;
-}
-
-function toggleAspectMenu(e) {
-    if (e) e.stopPropagation();
-    const menu = document.getElementById('aspectMenu');
-    const isHidden = menu.style.display === 'none' || menu.style.display === '';
-    menu.style.display = isHidden ? 'flex' : 'none';
-    if (isHidden) document.getElementById('modelMenu').style.display = 'none';
-}
-
-function openBuyModal() { renderBuyGrid(); document.getElementById('buyModal').style.display = 'flex'; }
-
-function renderBuyGrid() {
-    const grid = document.getElementById('buyGrid');
-    grid.innerHTML = '';
-    const t = TRANSLATIONS[currentLang];
-    PACKAGES.forEach(pkg => {
-        const piAmount = (pkg.usd / currentPiPrice).toFixed(4);
-        const div = document.createElement('div');
-        div.className = 'buy-card';
-        div.onclick = () => buyTokens(pkg, piAmount);
-        div.innerHTML = `
-            <div class="buy-info">
-                <span class="buy-amount">${pkg.tokens} ${t.tokens}</span>
-                <span class="buy-cost" style="color:#aaa; font-size:11px;">$${pkg.usd}</span>
-                <span class="buy-cost">${piAmount} ${t.pi}</span>
-            </div>
-            <svg class="buy-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
-        `;
-        grid.appendChild(div);
-    });
-}
-
-async function buyTokens(pkg, piAmount) {
-    if (!piUser) { alert("Login first"); return; }
-    try {
-        const paymentData = {
-            amount: parseFloat(piAmount),
-            memo: `${pkg.tokens} Tokens - AIWay`,
-            metadata: { type: "tokens", tokenAmount: pkg.tokens, pi_uid: piUser.uid }
-        };
-        await Pi.createPayment(paymentData, {
-           onReadyForServerApproval: async (paymentId) => {
-    const res = await fetch('/api/approve', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
-        body: JSON.stringify({ paymentId }) 
-    });
-    
-    if (!res.ok) {
-        // نصيحة: اقرأ الخطأ لتعرف السبب بدقة
-        const errData = await res.json();
-        console.error("Approve Error:", errData);
-        throw new Error("Approval Failed");
-    }
-},
-           onReadyForServerCompletion: async (paymentId, txid) => {
-    const res = await fetch('/api/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // ✅ تأكد من وجود هذا السطر
-        body: JSON.stringify({
-            paymentId,
-            txid,
-            pi_uid: piUser.uid,
-            username: piUser.username,
-            tokenAmount: pkg.tokens,
-            usdAmount: pkg.usd,
-            pAmount: paymentData.amount
-        })
-    });
-    // ... باقي الكود
-                if (!res.ok) throw new Error("Completion Failed");
-                const data = await res.json();
-                document.getElementById('tokenBalance').textContent = data.newBalance;
-                document.getElementById('buyModal').style.display = 'none';
-                alert(`+${pkg.tokens} Tokens!`);
-            },
-            onCancel: (paymentId) => { console.log("Cancelled"); },
-            onError: (error) => { console.error("Error", error); }
-        });
-    } catch (e) { console.error(e); alert("Payment Failed"); }
-}
-
-function updateCooldownUI() {
-    const now = Date.now();
-    const btn = document.getElementById('sendBtn');
-    const icon = document.getElementById('sendIcon');
-    const countEl = document.getElementById('countdownEl');
-    const t = TRANSLATIONS[currentLang];
-    if (now < cooldownEndTime) {
-        const remaining = Math.ceil((cooldownEndTime - now) / 1000);
-        btn.disabled = true; icon.style.display = 'none'; countEl.style.display = 'block';
-        countEl.innerText = `${t.wait}\n${remaining}${t.sec}`;
-        requestAnimationFrame(updateCooldownUI);
-    } else {
-        btn.disabled = false; icon.style.display = 'block'; countEl.style.display = 'none';
-    }
-}
-
-function triggerCooldown(seconds) {
-    cooldownEndTime = Date.now() + (seconds * 1000);
-    updateCooldownUI();
-}
-
-async function fetchWithRetry(url, options, retries = 2) {
-    let lastErr = null;
-    for (let i = 0; i <= retries; i++) {
-        try {
-            const res = await fetch(url, options);
-
-            // ✅ FIX: رجّع الريسبونس حتى لو 403/429/500 عشان نقرأ رسالة الخطأ
-            if (res) return res;
-        } catch (e) {
-            lastErr = e;
-        }
-        await new Promise(r => setTimeout(r, 1200));
-    }
-    throw lastErr || new Error("Request failed after retries");
-}
-
-async function sendPrompt() {
-  if (Date.now() < cooldownEndTime) return;
-  
-  const input = document.getElementById('promptInput');
-  const text = input.value.trim();
-  if (!text || !piUser) return;
-  
-  input.value = '';
-  addMessage(text, 'user');
-  
-  const m = MODELS.find(x => x.id === currentModel) || MODELS[0];
-  const isChat = m.type === 'text';
-  const loadingId = renderLoader(isChat);
-  
-  triggerCooldown(5);
-  
-  try {
-    // ✅ ابعت prompt دايمًا (ده اللي بيمنع Missing data)
-    let payload = {
-      prompt: String(text),
-      username: piUser.username,
-      pi_uid: piUser.uid,
-      model: currentModel
     };
-    
-    if (isChat) {
-      // ✅ ابعت messages كمان لو شات
-      payload.messages = [...normalizeMessages(chatHistory), { role: "user", content: String(text) }];
-    } else {
-      // ✅ ابعت المقاسات لو صورة
-      payload.width = currentWidth;
-      payload.height = currentHeight;
-    }
-    
-    const response = await fetchWithRetry('/api/generate-and-save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+
+    let currentLang = 'en'; 
+
+    marked.setOptions({
+        highlight: function(code, lang) { return code; },
+        breaks: true,
+        gfm: true
     });
-    
-    const status = response.status;
-    let data = {};
-    try { data = await response.json(); } catch {}
-    
-    safeRemove(loadingId);
-    
-    if (status === 403) {
-      if (data?.error === 'INSUFFICIENT_TOKENS') addNoTokenCard();
-      else addBotText(`⚠️ ${data?.error || "Forbidden"}`);
-      return;
-    }
-    
-    if (status === 429) {
-      addBotText(`⚠️ ${TRANSLATIONS[currentLang].rateLimit}`);
-      triggerCooldown(25);
-      return;
-    }
-    
-    if (!response.ok) {
-      addBotText(`⚠️ Error (${status}): ${data?.error || data?.message || "Server error"}`);
-      return;
-    }
-    
-    if (data?.newBalance !== undefined) {
-      document.getElementById('tokenBalance').textContent = data.newBalance;
-    }
-    
-    const reply = (typeof data?.reply === "string") ? data.reply : (typeof data?.text === "string" ? data.text : "");
-    const imgUrl = data?.imageUrl || data?.image_url || data?.url || "";
-    
-    if (reply && reply.trim() !== "") {
-      chatHistory.push({ role: "user", content: String(text) });
-      chatHistory.push({ role: "assistant", content: String(reply) });
-      if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
-      addBotText(reply);
-      return;
-    }
-    
-    if (imgUrl) {
-      addBotImage(imgUrl, data?.width, data?.height);
-      return;
-    }
-    
-    addBotText("⚠️ AI returned no content");
-    
-  } catch (error) {
-    console.error("Frontend Error:", error);
-    triggerCooldown(12);
-    safeRemove(loadingId);
-    addBotText("⚠️ Network / AI overload");
-  }
-}
 
-function addBotText(markdown) {
-    const div = document.createElement('div');
-    div.className = 'message bot';
+    const MODELS = [
+        { id: 'imagen-4', name: 'Imagen 4', type: 'image', desc_en: 'Google SOTA', desc_ar: 'نموذج جوجل الأحدث', badge: 'IMG' },
+        { id: 'klein-large', name: 'FLUX.2 Klein 9B', type: 'image', desc_en: 'Ultra Quality', desc_ar: 'جودة فائقة', badge: 'IMG' },
+        { id: 'klein', name: 'FLUX.2 Klein 4B', type: 'image', desc_en: 'Fast & Creative', desc_ar: 'سريع ومبتكر', badge: 'IMG' },
+        { id: 'gptimage', name: 'GPT Image 1 Mini', type: 'image', desc_en: 'High Creativity', desc_ar: 'إبداع عالي', badge: 'IMG' },
+        { id: 'grok-video', name: 'Grok Video', type: 'video', desc_en: 'Video Generator', desc_ar: 'توليد فيديو', badge: 'VID' },
+        { id: 'openai-large', name: 'OpenAI GPT-5.2', type: 'chat', desc_en: 'Reasoning', desc_ar: 'تحليل + تفكير', badge: 'VIS' },
+        { id: 'openai', name: 'OpenAI GPT-5 Mini', type: 'chat', desc_en: 'Smart Standard', desc_ar: 'قياسي ذكي', badge: 'VIS' },
+        { id: 'openai-fast', name: 'OpenAI GPT-5 Nano', type: 'chat', desc_en: 'Fast Chat', desc_ar: 'شات سريع', badge: 'VIS' }
+    ];
 
-    // ✅ FIX: markdown render قوي + fallback
-    const htmlContent = renderMarkdownSafe(markdown);
-    const rawText = encodeURIComponent(String(markdown || ""));
+    let currentModelId = 'imagen-4';
+    let currentImageBase64 = null;
+    let isGenerating = false;
+    let cooldownTimer = null;
+    
+    // Aspect Ratio Data
+    const ASPECTS = {
+        '1:1': { w: 1024, h: 1024 },
+        '16:9': { w: 1280, h: 720 },
+        '9:16': { w: 720, h: 1280 },
+        '4:3': { w: 1024, h: 768 },
+        '3:4': { w: 768, h: 1024 }
+    };
+    let currentAspect = '1:1';
 
-    div.innerHTML = `
-        <div class="msg-bubble" style="background:#111; color:#eee; border:1px solid #333; padding:15px; width:100%; border-radius:20px; border-top-left-radius:4px;">
-            <div class="markdown-body">${htmlContent}</div>
-            <div class="msg-actions" style="display:flex; justify-content:flex-end; margin-top:10px; border-top:1px solid #222; padding-top:10px;">
-                <button class="copy-msg-btn" onclick="copyText(this, decodeURIComponent('${rawText}'))" style="background:rgba(255,255,255,0.05); border:1px solid #444; color:#ccc; padding:5px 12px; border-radius:8px; cursor:pointer; font-size:11px;">
-                    📑 Copy Message
-                </button>
-            </div>
-        </div>
-    `;
+    // UI Refs
+    const chatContainer = document.getElementById('chatContainer');
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const attachBtn = document.getElementById('attachBtn');
+    const emptyState = document.getElementById('emptyState');
+    const modelMenu = document.getElementById('modelMenu');
+    const headerModelName = document.getElementById('headerModelName');
+    const chevron = document.getElementById('chevron');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewThumb = document.getElementById('previewThumb');
+    const modelModeText = document.getElementById('modelModeText');
+    const txtWelcome = document.getElementById('txtWelcome');
+    const previewInfo = document.getElementById('previewInfo');
+    const langBtn = document.getElementById('langBtn');
+    
+    // Gallery Refs
+    const galleryModal = document.getElementById('galleryModal');
+    const galleryGrid = document.getElementById('galleryGrid');
+    const galleryTitle = document.getElementById('galleryTitle');
 
-    document.getElementById('chatContainer').appendChild(div);
+    // Aspect Refs
+    const aspectMenu = document.getElementById('aspectMenu');
+    const aspectLabel = document.getElementById('aspectLabel');
 
-    // ✅ FIX: highlight لو موجود
-    if (window.hljs && typeof hljs.highlightElement === "function") {
-        div.querySelectorAll('pre code').forEach((block) => {
-            try { hljs.highlightElement(block); } catch {}
+    window.onload = function() {
+        renderModelMenu();
+        const savedModel = localStorage.getItem('nanoSelectedModel');
+        if(savedModel && MODELS.find(m => m.id === savedModel)) selectModel(savedModel);
+        else selectModel(currentModelId);
+        
+        updateInterfaceText();
+    };
+
+    /* --- Landing Page Logic --- */
+    function enterApp() {
+        const landing = document.getElementById('landingPage');
+        landing.style.opacity = '0';
+        landing.style.visibility = 'hidden';
+    }
+
+    /* --- Cooldown Logic --- */
+    function triggerCooldown() {
+        if(cooldownTimer) return;
+        
+        const originalIcon = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+        let seconds = 25;
+        
+        // Show Bot Message for Server Busy
+        renderBotText(`**${LANG[currentLang].server_busy}** ⏳`);
+
+        sendBtn.disabled = true;
+        sendBtn.style.background = "var(--warning)";
+        sendBtn.style.color = "black";
+        sendBtn.innerHTML = `<span style="font-weight:800; font-size:13px">${seconds}s</span>`;
+
+        cooldownTimer = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                
+                // Restore button
+                const model = MODELS.find(m => m.id === currentModelId);
+                // Reset accent color based on mode
+                let accentColor = "var(--accent)"; 
+                if(model.type === 'chat') accentColor = "var(--accent-chat)";
+                if(model.type === 'video') accentColor = "var(--accent-video)";
+                
+                sendBtn.disabled = false;
+                sendBtn.style.background = accentColor;
+                sendBtn.style.color = "black";
+                sendBtn.innerHTML = originalIcon;
+            } else {
+                sendBtn.innerHTML = `<span style="font-weight:800; font-size:13px">${seconds}s</span>`;
+            }
+        }, 1000);
+    }
+
+    /* --- Aspect Ratio Logic --- */
+    function toggleAspectMenu() {
+        const isFlex = aspectMenu.style.display === 'flex';
+        aspectMenu.style.display = isFlex ? 'none' : 'flex';
+    }
+    
+    function selectAspect(ratio) {
+        currentAspect = ratio;
+        aspectLabel.innerText = ratio;
+        
+        // Update UI selection
+        document.querySelectorAll('.aspect-option').forEach(opt => {
+            opt.classList.remove('selected');
+            if(opt.dataset.ratio === ratio) opt.classList.add('selected');
         });
+        
+        aspectMenu.style.display = 'none';
     }
 
-    scrollToBottom();
-}
-
-function renderLoader(isChat) {
-    const div = document.createElement('div');
-    div.className = 'message bot';
-    div.id = 'loading-' + Date.now();
-
-    if (isChat) {
-        div.innerHTML = `
-            <div class="chat-loading-bubble">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
-    } else {
-        div.innerHTML = `
-            <div class="image-loading-box">
-                <div class="blur-wave"></div>
-                <div class="loading-text">Generating...</div>
-            </div>
-        `;
-    }
-
-    document.getElementById('chatContainer').appendChild(div);
-    scrollToBottom();
-    return div.id;
-}
-
-function addMessage(content, type) {
-    const div = document.createElement('div');
-    div.className = `message ${type}`;
-    div.innerHTML = `<div class="msg-bubble">${String(content || "")}</div>`;
-    document.getElementById('chatContainer').appendChild(div);
-    document.getElementById('emptyMsg').style.display = 'none';
-    scrollToBottom();
-}
-
-function addNoTokenCard() {
-    const t = TRANSLATIONS[currentLang];
-    const div = document.createElement('div');
-    div.className = 'message bot';
-    div.innerHTML = `
-        <div class="msg-bubble">
-            <div class="no-token-card">
-                <div class="no-token-text">${t.noTokens}</div>
-                <button class="buy-now-btn" onclick="openBuyModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="black"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
-                    ${t.buyNow}
-                </button>
-            </div>
-        </div>
-    `;
-    document.getElementById('chatContainer').appendChild(div);
-    scrollToBottom();
-}
-
-function addBotImage(url, w, h) {
-    const t = TRANSLATIONS[currentLang];
-    const div = document.createElement('div');
-    div.className = 'message bot';
-
-    const ww = Number(w) || currentWidth;
-    const hh = Number(h) || currentHeight;
-    let aspectRatio = ww / hh;
-
-    div.innerHTML = `
-        <div class="msg-bubble">
-            <div class="image-container" style="aspect-ratio: ${aspectRatio};">
-                <img src="${url}" class="msg-image" onload="this.classList.add('loaded')">
-            </div>
-            <div class="download-bar">
-                <button class="d-btn" onclick="forceDownload('${url}', this)">${t.download}</button>
-            </div>
-        </div>
-    `;
-    document.getElementById('chatContainer').appendChild(div);
-    scrollToBottom();
-}
-
-function scrollToBottom() {
-    const c = document.getElementById('chatContainer');
-    c.scrollTop = c.scrollHeight;
-}
-
-async function forceDownload(url, btn) {
-    const downloadUrl = url + "?download=";
-
-    try {
-        await navigator.clipboard.writeText(downloadUrl);
-        showInfoModal(downloadUrl);
-    } catch (err) {
-        const textArea = document.createElement("textarea");
-        textArea.value = downloadUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            showInfoModal(downloadUrl);
-        } catch (err) {
-            console.error('Fallback copy failed', err);
-            alert("Failed to copy link. Please manually open: " + downloadUrl);
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!aspectMenu.contains(event.target) && !document.getElementById('aspectBtn').contains(event.target)) {
+            aspectMenu.style.display = 'none';
         }
-        document.body.removeChild(textArea);
+        if (!modelMenu.contains(event.target) && !document.querySelector('.header-title').contains(event.target)) {
+            toggleModelMenu(false);
+        }
+        if (event.target === galleryModal) {
+            closeGallery();
+        }
+    });
+
+    /* --- Language Logic --- */
+    function toggleLanguage() {
+        currentLang = currentLang === 'en' ? 'ar' : 'en';
+        
+        if(currentLang === 'ar') {
+            document.body.classList.add('lang-ar');
+        } else {
+            document.body.classList.remove('lang-ar');
+        }
+
+        updateInterfaceText();
+        renderModelMenu();
+        selectModel(currentModelId);
     }
-}
 
-function showInfoModal(link) {
-    document.getElementById('dlLinkBox').textContent = link;
-    document.getElementById('downloadInfoModal').style.display = 'flex';
-}
+    function updateInterfaceText() {
+        const t = LANG[currentLang];
+        // Main App
+        langBtn.innerText = t.next_lang_btn;
+        txtWelcome.innerHTML = t.welcome;
+        previewInfo.innerText = t.img_attached;
+        galleryTitle.innerText = t.gallery_title;
+        
+        // Landing Page
+        document.getElementById('langBtnLanding').innerText = t.next_lang_btn;
+        document.getElementById('landDesc').innerText = t.land_desc;
+        document.getElementById('landSupport').innerText = t.site_support;
+        document.getElementById('featText').innerText = t.feat_text;
+        document.getElementById('featVideo').innerText = t.feat_video;
+        document.getElementById('featImg').innerText = t.feat_img;
+        document.getElementById('btnLogin').innerText = t.pi_login;
 
-async function openGallery() {
-    const t = TRANSLATIONS[currentLang];
-    if (!piUser) { alert("Login Required"); return; }
-    const modal = document.getElementById('galleryModal');
-    const grid = document.getElementById('galleryGrid');
-    modal.style.display = 'flex';
-    grid.innerHTML = '<div style="color:white; text-align:center; grid-column: span 2;">Loading...</div>';
-    try {
-        const res = await fetch(`/api/get-gallery?username=${piUser.username}`);
-        const images = await res.json();
-        grid.innerHTML = '';
-        if (!Array.isArray(images) || images.length === 0) {
-            grid.innerHTML = `<div style="color:#777; padding:20px; grid-column: span 2; text-align:center;">${t.noImages}</div>`;
+        document.querySelectorAll('.copy-msg-btn').forEach(btn => {
+            if(!btn.innerHTML.includes('svg')) btn.innerText = t.copy;
+        });
+        
+        if(galleryModal.style.display === 'flex') {
+            renderGalleryItems();
+        }
+    }
+
+    /* --- Gallery Logic --- */
+    function getGalleryData() {
+        const data = localStorage.getItem('nanoGallery');
+        return data ? JSON.parse(data) : [];
+    }
+
+    function saveToGallery(url, type) {
+        const items = getGalleryData();
+        items.unshift({ url, type, date: Date.now() }); 
+        localStorage.setItem('nanoGallery', JSON.stringify(items));
+    }
+
+    function deleteFromGallery(index) {
+        const items = getGalleryData();
+        items.splice(index, 1);
+        localStorage.setItem('nanoGallery', JSON.stringify(items));
+        renderGalleryItems();
+    }
+
+    function openGallery() {
+        galleryModal.style.display = 'flex';
+        renderGalleryItems();
+    }
+
+    function closeGallery() {
+        galleryModal.style.display = 'none';
+    }
+
+    function renderGalleryItems() {
+        const items = getGalleryData();
+        galleryGrid.innerHTML = '';
+
+        if (items.length === 0) {
+            galleryGrid.innerHTML = `<div class="empty-gallery-msg">${LANG[currentLang].empty_gallery}</div>`;
             return;
         }
 
-        images.forEach(img => {
-            const div = document.createElement('div');
-            div.className = 'gallery-item';
-            div.innerHTML = `
-                <img src="${img.url}" loading="lazy">
-                <div class="gallery-actions">
-                    <button class="g-btn g-down" onclick="forceDownload('${img.url}', this)">${t.download}</button>
-                    <button class="g-btn g-del" onclick="deleteImage('${img.id}', this)">${t.delete}</button>
+        items.forEach((item, index) => {
+            const el = document.createElement('div');
+            el.className = 'gallery-item';
+            let mediaHtml = '';
+            if (item.type === 'video') {
+                mediaHtml = `<video src="${item.url}" controls></video>`;
+            } else {
+                mediaHtml = `<img src="${item.url}" loading="lazy">`;
+            }
+            const badgeType = item.type === 'video' ? 'VIDEO' : 'IMG';
+            el.innerHTML = `
+                ${mediaHtml}
+                <div class="gallery-badges"><div class="g-badge">${badgeType}</div></div>
+                <div class="gallery-actions-overlay">
+                    <button class="g-btn del" onclick="deleteFromGallery(${index})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+                    <button class="g-btn dl" onclick="downloadFile('${item.url}', this, '${item.type === 'video' ? 'mp4' : 'jpg'}')"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg></button>
                 </div>
             `;
-            grid.appendChild(div);
+            galleryGrid.appendChild(el);
         });
-    } catch (e) {
-        grid.innerHTML = `<div style="color:red; grid-column: span 2;">${t.error}</div>`;
     }
-}
 
-async function deleteImage(imageId, btn) {
-    const t = TRANSLATIONS[currentLang];
-    if (!confirm(t.confirmDel)) return;
-    const parent = btn.closest('.gallery-item');
-    parent.style.opacity = '0.5';
-    try {
-        const res = await fetch('/api/delete-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
-    body: JSON.stringify({ id: imageId, username: piUser.username })
-});
-        if (res.ok) parent.remove();
-        else { alert(t.error); parent.style.opacity = '1'; }
-    } catch(e) { console.error(e); }
-}
+    /* --- Model Logic --- */
+    function renderModelMenu() {
+        modelMenu.innerHTML = '';
+        const t = LANG[currentLang];
+        
+        const imgHeader = document.createElement('div');
+        imgHeader.className = 'model-category'; imgHeader.innerText = t.cat_img;
+        modelMenu.appendChild(imgHeader);
+        MODELS.filter(m => m.type === 'image').forEach(m => createModelOption(m));
 
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('#modelMenu') && !e.target.closest('.header-title-area')) {
-        document.getElementById('modelMenu').style.display = 'none';
-        document.getElementById('modelChevron').style.transform = 'rotate(0deg)';
+        const vidHeader = document.createElement('div');
+        vidHeader.className = 'model-category'; vidHeader.innerText = t.cat_vid;
+        vidHeader.style.marginTop = '12px';
+        modelMenu.appendChild(vidHeader);
+        MODELS.filter(m => m.type === 'video').forEach(m => createModelOption(m));
+
+        const chatHeader = document.createElement('div');
+        chatHeader.className = 'model-category'; chatHeader.innerText = t.cat_chat;
+        chatHeader.style.marginTop = '12px';
+        modelMenu.appendChild(chatHeader);
+        MODELS.filter(m => m.type === 'chat').forEach(m => createModelOption(m));
     }
-    if (!e.target.closest('#aspectMenu') && !e.target.closest('#aspectTriggerBtn')) {
-        document.getElementById('aspectMenu').style.display = 'none';
+
+    function createModelOption(m) {
+        const desc = currentLang === 'ar' ? m.desc_ar : m.desc_en;
+        const div = document.createElement('div');
+        div.className = `model-option ${m.id === currentModelId ? 'active' : ''}`;
+        div.setAttribute('data-type', m.type);
+        div.onclick = () => selectModel(m.id);
+        div.innerHTML = `
+            <div>
+                <div class="model-name">${m.name}</div>
+                <div class="model-desc">
+                    <span class="badge ${m.type === 'image' ? 'img' : (m.type === 'video' ? 'vid' : 'vis')}">${m.badge}</span>
+                    ${desc}
+                </div>
+            </div>
+            <svg class="check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        `;
+        modelMenu.appendChild(div);
     }
-});
 
-async function loadChatHistory() {
-    if (!piUser) return;
+    function selectModel(id) {
+        currentModelId = id;
+        const model = MODELS.find(m => m.id === id);
+        headerModelName.textContent = model.name;
+        const t = LANG[currentLang];
+        
+        document.body.classList.remove('mode-chat', 'mode-video');
 
-    const loadingDiv = document.createElement('div');
-    loadingDiv.innerHTML = '<div style="text-align:center; color:#555; font-size:12px; margin:10px;">Loading history...</div>';
-    document.getElementById('chatContainer').appendChild(loadingDiv);
+        // Hide/Show Aspect button based on mode
+        const aspectBtn = document.getElementById('aspectBtn');
+        const sendBtn = document.getElementById('sendBtn');
 
-    try {
-        const res = await fetch(`/api/get-chat-history?username=${piUser.username}`);
-        const historyData = await res.json();
+        // Reset Send Button Style on mode switch
+        sendBtn.disabled = false;
+        if(cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
+        sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+        sendBtn.style.color = "black";
 
-        document.getElementById('emptyMsg').style.display = 'none';
-        loadingDiv.remove();
-
-        const list = Array.isArray(historyData) ? historyData : [];
-
-        list.forEach(item => {
-            if (item?.prompt) {
-                addMessage(item.prompt, 'user');
-                chatHistory.push({ role: "user", content: String(item.prompt) });
+        if (model.type === 'chat') {
+            document.body.classList.add('mode-chat');
+            modelModeText.innerText = t.mode_chat;
+            promptInput.placeholder = t.placeholder_chat;
+            document.getElementById('emptyLogo').innerText = "👁️";
+            aspectBtn.style.display = 'none'; 
+            sendBtn.style.background = "var(--accent-chat)";
+        } else {
+            aspectBtn.style.display = 'flex'; 
+            if (model.type === 'video') {
+                document.body.classList.add('mode-video');
+                modelModeText.innerText = t.mode_vid;
+                promptInput.placeholder = t.placeholder_vid;
+                document.getElementById('emptyLogo').innerText = "🎬";
+                sendBtn.style.background = "var(--accent-video)";
+            } else {
+                modelModeText.innerText = t.mode_img;
+                promptInput.placeholder = t.placeholder_img;
+                document.getElementById('emptyLogo').innerText = "✨";
+                sendBtn.style.background = "var(--accent)";
             }
+        }
+        localStorage.setItem('nanoSelectedModel', id);
+        toggleModelMenu(false); renderModelMenu();
+    }
 
-            if (item?.type === 'text' && item?.bot_response) {
-                addBotText(item.bot_response);
-                chatHistory.push({ role: "assistant", content: String(item.bot_response) });
-            } else if (item?.image_url || item?.imageUrl) {
-                addBotImage(item.image_url || item.imageUrl, item.width, item.height);
+    function toggleModelMenu(forceState = null) {
+        const isHidden = modelMenu.style.display === 'none' || modelMenu.style.display === '';
+        modelMenu.style.display = (forceState !== null ? forceState : isHidden) ? 'flex' : 'none';
+        chevron.style.transform = (forceState !== null ? forceState : isHidden) ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    /* --- File Handling --- */
+    function handleFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                currentImageBase64 = e.target.result;
+                previewThumb.src = currentImageBase64;
+                previewContainer.style.display = 'flex';
+                attachBtn.classList.add('has-file');
+                promptInput.focus();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function clearImageAttachment() {
+        currentImageBase64 = null;
+        document.getElementById('fileInput').value = "";
+        previewContainer.style.display = 'none';
+        attachBtn.classList.remove('has-file');
+    }
+
+    /* --- Sending Logic --- */
+    async function sendMessage() {
+        if(cooldownTimer) return; // Block sending during cooldown
+
+        const text = promptInput.value.trim();
+        const model = MODELS.find(m => m.id === currentModelId);
+        const t = LANG[currentLang];
+
+        if (!text && !currentImageBase64) return;
+        if (isGenerating) return;
+
+        promptInput.value = '';
+        promptInput.style.height = 'auto';
+        emptyState.style.display = 'none';
+        isGenerating = true;
+        sendBtn.disabled = true;
+
+        renderUserMessage(text, currentImageBase64);
+        
+        // Get Dimensions
+        const dim = ASPECTS[currentAspect] || ASPECTS['1:1'];
+
+        // --- SCENARIO 1: IMAGE or VIDEO + ATTACHED IMAGE (Vision Edit/Describe) ---
+        if ((model.type === 'image' || model.type === 'video') && currentImageBase64) {
+            const loaderId = renderLoader(t.analyzing);
+            try {
+                const analysisResponse = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
+                    body: JSON.stringify({
+                        model: "openai", 
+                        messages: [{
+                            role: "user",
+                            content: [
+                                { type: "text", text: `Analyze this image and apply this change/instruction: "${text}". Output ONLY the detailed visual prompt needed to recreate/generate this scene.` },
+                                { type: "image_url", image_url: { url: currentImageBase64 } }
+                            ]
+                        }]
+                    })
+                });
+                
+                const analysisData = await analysisResponse.json();
+                const refinedPrompt = analysisData.choices[0].message.content;
+                updateLoaderText(loaderId, model.type === 'video' ? t.making_vid : t.drawing);
+
+                const seed = Math.floor(Math.random() * 1000000);
+                const finalUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(refinedPrompt)}?model=${model.id}&width=${dim.w}&height=${dim.h}&seed=${seed}&nologo=true&key=${API_KEY}`;
+                
+                const imgRes = await fetch(finalUrl);
+                if (!imgRes.ok) throw new Error("Gen Error");
+                const blob = await imgRes.blob();
+                const objectUrl = URL.createObjectURL(blob);
+
+                removeLoader(loaderId);
+                if (model.type === 'video') {
+                    renderBotVideo(objectUrl);
+                    saveToGallery(objectUrl, 'video');
+                } else {
+                    renderBotImage(objectUrl);
+                    saveToGallery(objectUrl, 'image');
+                }
+                clearImageAttachment();
+
+            } catch (err) {
+                removeLoader(loaderId);
+                triggerCooldown(); // Trigger wait on error
             }
-        });
+        }
+        
+        // --- SCENARIO 2: IMAGE or VIDEO + TEXT ONLY ---
+        else if (model.type === 'image' || model.type === 'video') {
+            const msg = model.type === 'video' ? t.making_vid : t.drawing;
+            const loaderId = renderLoader(msg);
+            try {
+                let prompt = text;
+                if (/[\u0600-\u06FF]/.test(text)) prompt = await translateToEnglish(text);
+                
+                const seed = Math.floor(Math.random() * 1000000);
+                const finalUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model.id}&width=${dim.w}&height=${dim.h}&seed=${seed}&nologo=true&key=${API_KEY}`;
+                
+                const res = await fetch(finalUrl);
+                if (!res.ok) throw new Error("Gen Error");
+                const blob = await res.blob();
+                const objectUrl = URL.createObjectURL(blob);
 
-        // ✅ FIX: نظّف الهستوري
-        chatHistory = normalizeMessages(chatHistory).slice(-24);
+                removeLoader(loaderId);
+                if (model.type === 'video') {
+                    renderBotVideo(objectUrl);
+                    saveToGallery(objectUrl, 'video');
+                } else {
+                    renderBotImage(objectUrl);
+                    saveToGallery(objectUrl, 'image');
+                }
 
+            } catch (err) {
+                removeLoader(loaderId);
+                triggerCooldown(); // Trigger wait on error
+            }
+        }
+
+        // --- SCENARIO 3: CHAT ---
+        else {
+            const loaderId = renderTypingIndicator();
+            try {
+                const sysPrompt = currentLang === 'ar' 
+                    ? "You are a helpful AI assistant. Reply in Arabic. Use Markdown." 
+                    : "You are a helpful AI assistant. Reply in English. Use Markdown.";
+
+                const messages = [{ role: "system", content: sysPrompt }];
+                
+                if (currentImageBase64) {
+                    messages.push({
+                        role: "user",
+                        content: [
+                            { type: "text", text: text || "Describe this image." },
+                            { type: "image_url", image_url: { url: currentImageBase64 } }
+                        ]
+                    });
+                    clearImageAttachment();
+                } else {
+                    messages.push({ role: "user", content: text });
+                }
+
+                const response = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
+                    body: JSON.stringify({ model: model.id, messages: messages })
+                });
+
+                if (!response.ok) throw new Error("Chat Error");
+                const data = await response.json();
+                const botReply = data.choices[0].message.content;
+
+                removeLoader(loaderId);
+                renderBotText(botReply);
+            } catch (err) {
+                removeLoader(loaderId);
+                renderBotText(t.error_con);
+            }
+        }
+
+        isGenerating = false;
+        if(!cooldownTimer) sendBtn.disabled = false;
+    }
+
+    async function translateToEnglish(text) {
+        try {
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`);
+            const data = await res.json();
+            return data[0][0][0];
+        } catch { return text; }
+    }
+
+    // --- Rendering ---
+    function renderUserMessage(text, imageBase64) {
+        const div = document.createElement('div');
+        div.className = 'message user';
+        let html = '';
+        if (imageBase64) html += `<img src="${imageBase64}" class="user-img-display">`;
+        if (text) html += `<div>${escapeHtml(text)}</div>`;
+        div.innerHTML = `<div class="msg-bubble">${html}</div>`;
+        chatContainer.appendChild(div);
         scrollToBottom();
-
-    } catch (e) {
-        console.error("Error loading history:", e);
-        loadingDiv.innerHTML = '<div style="text-align:center; color:red; font-size:12px;">Failed to load history</div>';
     }
-}
+
+    function renderBotText(text) {
+        const div = document.createElement('div');
+        div.className = 'message bot text-msg';
+        const t = LANG[currentLang];
+        
+        let rawHtml = marked.parse(text);
+        div.innerHTML = `
+            <div class="msg-bubble">
+                <div class="markdown-body">${rawHtml}</div>
+                <div class="msg-footer">
+                    <button class="copy-msg-btn" onclick="copyToClipboard(this, '${escapejs(text)}')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        ${t.copy}
+                    </button>
+                </div>
+            </div>`;
+        
+        const preBlocks = div.querySelectorAll('pre');
+        preBlocks.forEach(pre => {
+            const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper';
+            const header = document.createElement('div'); header.className = 'code-header';
+            header.innerHTML = `<span class="code-lang">CODE</span><button class="copy-code-btn" onclick="copyCode(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>`;
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(header);
+            wrapper.appendChild(pre);
+        });
+
+        chatContainer.appendChild(div);
+        scrollToBottom();
+    }
+
+    function renderBotImage(url) {
+        const div = document.createElement('div'); div.className = 'message bot';
+        const t = LANG[currentLang];
+        div.innerHTML = `
+            <div class="msg-bubble image-bubble">
+                <div class="image-wrapper"><img src="${url}" class="msg-image" onload="this.classList.add('loaded')"></div>
+                <div class="download-btn-container"><button onclick="downloadFile('${url}', this, 'jpg')" class="btn-download-hd"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg><span>${t.download_hd}</span></button></div>
+            </div>`;
+        chatContainer.appendChild(div); scrollToBottom();
+    }
+
+    function renderBotVideo(url) {
+        const div = document.createElement('div'); div.className = 'message bot';
+        const t = LANG[currentLang];
+        div.innerHTML = `
+            <div class="msg-bubble image-bubble">
+                <div class="image-wrapper">
+                    <video src="${url}" class="msg-video" autoplay loop controls onloadstart="this.classList.add('loaded')"></video>
+                </div>
+                <div class="download-btn-container"><button onclick="downloadFile('${url}', this, 'mp4')" class="btn-download-hd"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg><span>${t.download_vid}</span></button></div>
+            </div>`;
+        chatContainer.appendChild(div); scrollToBottom();
+    }
+
+    function copyToClipboard(btn, text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const old = btn.innerHTML; 
+            btn.innerHTML = `<span>${LANG[currentLang].copied}</span>`;
+            setTimeout(() => btn.innerHTML = old, 2000);
+        });
+    }
+
+    function copyCode(btn) {
+        const code = btn.closest('.code-wrapper').querySelector('code');
+        if(code) {
+            navigator.clipboard.writeText(code.innerText).then(() => {
+                const old = btn.innerHTML; btn.innerHTML = '<span>OK!</span>';
+                setTimeout(() => btn.innerHTML = old, 2000);
+            });
+        }
+    }
+
+    function renderLoader(text) {
+        const div = document.createElement('div'); div.className = 'message bot'; div.id = 'loader-' + Date.now();
+        div.innerHTML = `<div class="blur-wave-container" style="width:200px; height:200px;"><div class="blur-wave-bg"></div><div class="blur-wave-text" style="font-size:12px;">${text}</div></div>`;
+        chatContainer.appendChild(div); scrollToBottom(); return div.id;
+    }
+    
+    function updateLoaderText(id, text) {
+        const el = document.getElementById(id);
+        if(el) el.querySelector('.blur-wave-text').innerText = text;
+    }
+
+    function renderTypingIndicator() {
+        const div = document.createElement('div'); div.className = 'message bot'; div.id = 'loader-' + Date.now();
+        div.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+        chatContainer.appendChild(div); scrollToBottom(); return div.id;
+    }
+    function removeLoader(id) { const el = document.getElementById(id); if(el) el.remove(); }
+    
+    async function downloadFile(url, btn, ext) {
+        if(!btn) {
+            const a = document.createElement('a'); a.href = url; a.download = `media-${Date.now()}.${ext}`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            return;
+        }
+
+        const span = btn.querySelector('span'); 
+        let old = "";
+        if(span) { old = span.innerText; span.innerText = "..."; }
+        
+        try { 
+            const res = await fetch(url); 
+            const blob = await res.blob(); 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            a.download = `media-${Date.now()}.${ext}`; 
+            document.body.appendChild(a); 
+            a.click(); 
+            document.body.removeChild(a); 
+        } catch(e) { alert("Error downloading"); }
+        
+        if(span) span.innerText = old;
+    }
+    function scrollToBottom() { chatContainer.scrollTop = chatContainer.scrollHeight; }
+    function escapeHtml(text) { return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+    function escapejs(text) { return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r'); }
+
+    promptInput.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 </script>
 </body>
 </html>
