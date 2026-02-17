@@ -540,6 +540,59 @@ body {
     gap: 5px;
 }
 .copy-msg-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+/* --- تنسيق المحتوى داخل الرسالة (Markdown) --- */
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.7; /* مسافة بين السطور للقراءة المريحة */
+}
+
+/* تنسيق الفقرات */
+.markdown-body p {
+    margin-bottom: 12px; /* مسافة أسفل كل فقرة */
+}
+.markdown-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* تنسيق القوائم والنقاط */
+.markdown-body ul, .markdown-body ol {
+    margin-bottom: 12px;
+    padding-inline-start: 20px; /* مسافة بادئة للنقاط */
+}
+.markdown-body li {
+    margin-bottom: 5px;
+}
+
+/* تنسيق العناوين (H1, H2, H3) */
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    font-weight: 700;
+    color: var(--pi-gold); /* تلوين العناوين بالذهبي */
+    margin-top: 15px;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+/* تنسيق الكود الصغير (Inline Code) مثل `this` */
+.markdown-body :not(pre) > code {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff79c6; /* لون مميز للكود الصغير */
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+/* تنسيق صندوق الكود الكبير */
+.code-wrapper {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    margin: 15px 0; /* مسافة فوق وتحت الصندوق */
+    overflow: hidden;
+    direction: ltr !important; /* إجبار الكود يكون من اليسار لليمين */
+    text-align: left;
+}
+
 </style>
 </head>
 <body>
@@ -1265,49 +1318,61 @@ async function sendPrompt() {
 function addBotText(text) {
     const div = document.createElement('div');
     div.className = 'message bot';
-    
-    // 1. تحويل الماركداون العادي
-    let rawHtml = marked.parse(text);
-    
+
+    // 1. تحويل النص من Markdown إلى HTML باستخدام marked
+    // gfm: true يفعل الجداول والقوائم المحسنة
+    // breaks: true يحول الضغط على Enter إلى سطر جديد
+    const htmlContent = marked.parse(text, { gfm: true, breaks: true });
+
     div.innerHTML = `
         <div class="msg-bubble">
-            <div class="markdown-body">${rawHtml}</div>
-        </div>`;
-    
-    // ---------------------------------------------------------
-    // الجزء المقتبس: البحث عن الأكواد وتغليفها في الصندوق الأسود
-    // ---------------------------------------------------------
+            <div class="markdown-body">${htmlContent}</div>
+            <div class="msg-actions">
+                <button class="copy-msg-btn" onclick="copyText(this, decodeURIComponent('${encodeURIComponent(text)}'))">
+                    📑 نسخ الرد
+                </button>
+            </div>
+        </div>
+    `;
+
+    // 2. البحث عن أكواد البرمجة وتغليفها في الصندوق الأسود (Code Box)
     const preBlocks = div.querySelectorAll('pre');
     
     preBlocks.forEach(pre => {
+        // إذا كان الـ pre موجود بالفعل داخل wrapper نتخطاه (للحماية)
+        if (pre.parentNode.classList.contains('code-wrapper')) return;
+
         // إنشاء الصندوق الخارجي
-        const wrapper = document.createElement('div'); 
+        const wrapper = document.createElement('div');
         wrapper.className = 'code-wrapper';
-        
-        // إنشاء الهيدر وزر النسخ
-        const header = document.createElement('div'); 
+
+        // محاولة معرفة لغة الكود (اختياري)
+        let langClass = pre.querySelector('code')?.className || '';
+        let lang = langClass.replace('language-', '') || 'CODE';
+
+        // إنشاء الهيدر (شريط العنوان وزر النسخ)
+        const header = document.createElement('div');
         header.className = 'code-header';
-        
-        // محتوى الهيدر (كلمة CODE وزر النسخ)
         header.innerHTML = `
-            <span class="code-lang">CODE</span>
+            <span class="code-lang">${lang.toUpperCase()}</span>
             <button class="copy-code-btn" onclick="copyCode(this)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                نسخ الكود
-            </button>`;
-        
-        // إدخال الصندوق قبل الكود الأصلي
+                Copy Code
+            </button>
+        `;
+
+        // إدخال الصندوق الجديد في الصفحة مكان الـ pre القديم
         pre.parentNode.insertBefore(wrapper, pre);
         
-        // نقل الهيدر والكود داخل الصندوق الجديد
+        // نقل الهيدر والـ pre داخل الصندوق
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
     });
-    // ---------------------------------------------------------
 
     document.getElementById('chatContainer').appendChild(div);
     scrollToBottom();
 }
+
 
 
 function renderLoader(isChat) {
