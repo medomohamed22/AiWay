@@ -627,33 +627,51 @@ body {
 
 <script>
 // دالة النسخ الذكية (تقرأ من الصفحة مباشرة)
+// --- دالة نسخ الكود (المعدلة) ---
 function copyCodeFromBlock(btn) {
     // 1. العثور على الحاوية الأب (code-wrapper)
     const wrapper = btn.closest('.code-wrapper');
     if (!wrapper) return;
 
-    // 2. العثور على عنصر الكود داخل الحاوية
-    const codeElement = wrapper.querySelector('code');
-    if (!codeElement) return;
+    // 2. العثور على عنصر الكود (pre أو code)
+    // نبحث عن code داخل pre، لأن marked يضع الكود داخل <pre><code>...</code></pre>
+    const codeElement = wrapper.querySelector('pre code') || wrapper.querySelector('code');
+    
+    if (!codeElement) {
+        console.error("No code element found!");
+        return;
+    }
 
-    // 3. جلب النص كما هو مكتوب
+    // 3. استخراج النص النظيف
     const textToCopy = codeElement.innerText || codeElement.textContent;
 
-    // 4. النسخ للحافظة
+    // 4. عملية النسخ
     navigator.clipboard.writeText(textToCopy).then(() => {
+        // نجاح النسخ: تغيير نص الزر مؤقتاً
         const originalHTML = btn.innerHTML;
         btn.innerHTML = '✅ Copied!';
         setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
     }).catch(err => {
         console.error('Copy failed:', err);
-        // Fallback للأجهزة القديمة
-        const textarea = document.createElement('textarea');
-        textarea.value = textToCopy;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        btn.innerHTML = '✅ Copied!';
+        // Fallback للأجهزة القديمة أو متصفح Pi إذا فشل الـ clipboard API
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            // جعل الـ textarea غير مرئي لعدم تشويه الصفحة
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // نجاح الـ Fallback
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+        } catch (e) {
+            alert("فشل النسخ، يرجى النسخ يدوياً.");
+        }
     });
 }
 
