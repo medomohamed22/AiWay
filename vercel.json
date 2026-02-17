@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "api/generate-and-save.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/complete.js": {
+      "maxDuration": 15
+    },
+    "api/approve.js": {
+      "maxDuration": 15
+    }
+  }
+}
