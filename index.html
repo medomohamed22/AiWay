@@ -450,18 +450,9 @@
         function openBuyModal() { renderBuyGrid(); document.getElementById('buyModal').style.display = 'flex'; }
 
         /* ====================== AUTH & PAYMENTS ====================== */
-        async function authenticatePi() {
-            try {
-                const scopes = ['username', 'payments'];
-                const auth = await Pi.authenticate(scopes, onIncompletePayment);
-                if (auth.user) {
-                    piUser = auth.user;
-                    document.getElementById('landingPage').style.display = 'none';
-                    fetchBalance();
-                    loadChatHistory();
-                }
-            } catch (err) { console.error(err); alert("Auth Failed"); }
-        }
+        authenticatePi
+
+
 
         function onIncompletePayment(payment) { console.log("Incomplete Payment", payment); }
 
