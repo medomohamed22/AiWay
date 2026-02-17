@@ -770,7 +770,7 @@ function renderMarkdownSafe(markdown) {
 /* =========================
    MARKED CONFIG (CLEAN)
    ========================= */
-const renderer = new marked.Renderer();
+
 const renderer = new marked.Renderer();
 renderer.code = function(code, language) {
     const validLang = language || 'plaintext';
