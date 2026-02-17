@@ -1,6 +1,6 @@
 // ملف: api/approve.js
 
-// إعدادات الباقات (يجب أن تتطابق مع الفرونت إند)
+// إعدادات الباقات
 const PACKAGES = {
     150: 1,   // 150 توكين = 1 دولار
     750: 5,   // 750 توكين = 5 دولار
@@ -8,12 +8,12 @@ const PACKAGES = {
 };
 
 export default async function handler(req, res) {
-    // 1. التحقق من طريقة الطلب (Vercel style)
+    // 1. التحقق من طريقة الطلب
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // 2. قراءة البيانات (Vercel يقرأ الـ body تلقائياً كـ JSON)
+    // 2. قراءة البيانات
     const { paymentId } = req.body;
 
     if (!paymentId) {
@@ -33,35 +33,44 @@ export default async function handler(req, res) {
         
         const paymentData = await paymentRes.json();
         const paidAmount = parseFloat(paymentData.amount);
-        const metadata = paymentData.metadata; // يحتوي على عدد التوكين المطلوب
+        const metadata = paymentData.metadata;
 
         // 4. التحقق من التلاعب في البيانات
         if (!metadata || metadata.type !== 'tokens' || !PACKAGES[metadata.tokenAmount]) {
             return res.status(400).json({ error: "Invalid payment metadata" });
         }
 
-        // 5. جلب سعر العملة الحالي من OKX
-        let currentPiPrice = 40.0; // سعر احتياطي
+        // 5. جلب سعر العملة الحالي من OKX (إجباري)
+        let currentPiPrice = null;
         try {
             const okxRes = await fetch('https://www.okx.com/api/v5/market/ticker?instId=PI-USDT');
+            if (!okxRes.ok) throw new Error("OKX API Error");
+            
             const okxData = await okxRes.json();
             if (okxData.data && okxData.data[0]) {
                 currentPiPrice = parseFloat(okxData.data[0].last);
             }
         } catch (e) {
-            console.error("Price fetch failed in approve, using backup");
+            console.error("Price fetch failed:", e);
+            // لا يوجد سعر احتياطي، نوقف العملية ونرجع خطأ
+            return res.status(502).json({ error: "Failed to fetch live Pi price from OKX. Please try again later." });
+        }
+
+        // تأكد أخير من أن السعر رقم صحيح وموجب
+        if (!currentPiPrice || isNaN(currentPiPrice) || currentPiPrice <= 0) {
+            return res.status(502).json({ error: "Invalid price data received from exchange." });
         }
 
         // 6. حساب القيمة المتوقعة ومقارنتها بالمدفوع
         const usdValue = PACKAGES[metadata.tokenAmount];
         const expectedPi = usdValue / currentPiPrice;
 
-        // السماح بهامش خطأ 10%
+        // السماح بهامش خطأ 10% لتذبذب السعر اللحظي
         const minAcceptedAmount = expectedPi * 0.90;
 
         if (paidAmount < minAcceptedAmount) {
-            console.log(`Fraud Attempt! Expected: ${expectedPi}, Paid: ${paidAmount}`);
-            return res.status(400).json({ error: "Price mismatch (Fraud protection)" });
+            console.log(`Fraud Attempt! Price: ${currentPiPrice}, Expected: ${expectedPi}, Paid: ${paidAmount}`);
+            return res.status(400).json({ error: "Price mismatch (Fraud protection). Price updated, please try again." });
         }
 
         // 7. الموافقة (Approve)
