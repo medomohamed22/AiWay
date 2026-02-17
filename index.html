@@ -1061,23 +1061,35 @@ async function buyTokens(pkg, piAmount) {
             metadata: { type: "tokens", tokenAmount: pkg.tokens, pi_uid: piUser.uid }
         };
         await Pi.createPayment(paymentData, {
-            onReadyForServerApproval: async (paymentId) => {
-                const res = await fetch('/api/approve', { method: 'POST', body: JSON.stringify({ paymentId }) });
-                if (!res.ok) throw new Error("Approval Failed");
-            },
-            onReadyForServerCompletion: async (paymentId, txid) => {
-                const res = await fetch('/api/complete', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        paymentId,
-                        txid,
-                        pi_uid: piUser.uid,
-                        username: piUser.username,
-                        tokenAmount: pkg.tokens,
-                        usdAmount: pkg.usd,
-                        pAmount: paymentData.amount
-                    })
-                });
+           onReadyForServerApproval: async (paymentId) => {
+    const res = await fetch('/api/approve', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
+        body: JSON.stringify({ paymentId }) 
+    });
+    
+    if (!res.ok) {
+        // نصيحة: اقرأ الخطأ لتعرف السبب بدقة
+        const errData = await res.json();
+        console.error("Approve Error:", errData);
+        throw new Error("Approval Failed");
+    }
+},
+           onReadyForServerCompletion: async (paymentId, txid) => {
+    const res = await fetch('/api/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, // ✅ تأكد من وجود هذا السطر
+        body: JSON.stringify({
+            paymentId,
+            txid,
+            pi_uid: piUser.uid,
+            username: piUser.username,
+            tokenAmount: pkg.tokens,
+            usdAmount: pkg.usd,
+            pAmount: paymentData.amount
+        })
+    });
+    // ... باقي الكود
                 if (!res.ok) throw new Error("Completion Failed");
                 const data = await res.json();
                 document.getElementById('tokenBalance').textContent = data.newBalance;
