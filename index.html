@@ -628,36 +628,23 @@ body {
 <script>
 // دالة النسخ الذكية (تقرأ من الصفحة مباشرة)
 // --- دالة نسخ الكود (المعدلة) ---
-function copyCodeFromBlock(btn) {
-    // 1. العثور على الحاوية الأب (code-wrapper)
-    const wrapper = btn.closest('.code-wrapper');
-    if (!wrapper) return;
+function copyCodeFromBlock(btn, encodedCode) {
+    // لم نعد بحاجة للبحث في الصفحة، الكود وصل للدالة مباشرة
+    if (!encodedCode) return;
 
-    // 2. العثور على عنصر الكود (pre أو code)
-    // نبحث عن code داخل pre، لأن marked يضع الكود داخل <pre><code>...</code></pre>
-    const codeElement = wrapper.querySelector('pre code') || wrapper.querySelector('code');
-    
-    if (!codeElement) {
-        console.error("No code element found!");
-        return;
-    }
+    try {
+        // فك تشفير الكود ليود لصورته الأصلية
+        const textToCopy = decodeURIComponent(encodedCode);
 
-    // 3. استخراج النص النظيف
-    const textToCopy = codeElement.innerText || codeElement.textContent;
-
-    // 4. عملية النسخ
-    navigator.clipboard.writeText(textToCopy).then(() => {
-        // نجاح النسخ: تغيير نص الزر مؤقتاً
-        const originalHTML = btn.innerHTML;
-        btn.innerHTML = '✅ Copied!';
-        setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
-    }).catch(err => {
-        console.error('Copy failed:', err);
-        // Fallback للأجهزة القديمة أو متصفح Pi إذا فشل الـ clipboard API
-        try {
+        // عملية النسخ
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+        }).catch(err => {
+            // Fallback للأجهزة القديمة
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
-            // جعل الـ textarea غير مرئي لعدم تشويه الصفحة
             textarea.style.position = 'fixed';
             textarea.style.left = '-9999px';
             document.body.appendChild(textarea);
@@ -665,14 +652,13 @@ function copyCodeFromBlock(btn) {
             document.execCommand('copy');
             document.body.removeChild(textarea);
             
-            // نجاح الـ Fallback
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '✅ Copied!';
             setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
-        } catch (e) {
-            alert("فشل النسخ، يرجى النسخ يدوياً.");
-        }
-    });
+        });
+    } catch (e) {
+        console.error("Copy Error:", e);
+    }
 }
 
 
@@ -785,28 +771,33 @@ function renderMarkdownSafe(markdown) {
    MARKED CONFIG (CLEAN)
    ========================= */
 const renderer = new marked.Renderer();
+const renderer = new marked.Renderer();
 renderer.code = function(code, language) {
     const validLang = language || 'plaintext';
-    // تنظيف الكود للعرض فقط
-    const escapedCode = String(code || "")
+    
+    // 1. تنظيف الكود للعرض في الشاشة (HTML)
+    const escapedDisplayCode = String(code || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // نضع الكود داخل <pre><code> بشكل طبيعي
-    // الزر الآن يستدعي دالة تبحث عن الكود المجاور
+    // 2. تشفير الكود الأصلي لوضعه داخل الزر (عشان النسخ يكون سليم 100%)
+    // نستخدم encodeURIComponent عشان لو الكود فيه علامات تنصيص ميبوظش الزر
+    const encodedRawCode = encodeURIComponent(String(code || ""));
+
     return `
     <div class="code-wrapper">
         <div class="code-header">
             <span class="code-lang">${validLang}</span>
-            <button class="copy-code-btn" type="button" onclick="copyCodeFromBlock(this)">
+            <button class="copy-code-btn" type="button" onclick="copyCodeFromBlock(this, '${encodedRawCode}')">
                 📋 Copy Code
             </button>
         </div>
-        <pre><code class="language-${validLang}">${escapedCode}</code></pre>
+        <pre><code class="language-${validLang}">${escapedDisplayCode}</code></pre>
     </div>`;
 };
 marked.setOptions({ renderer: renderer });
+
 
 function copyCodeBlock(btn) {
     // جلب الكود المشفر من خاصية data-code
