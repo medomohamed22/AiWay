@@ -1413,9 +1413,10 @@ async function deleteImage(imageId, btn) {
     parent.style.opacity = '0.5';
     try {
         const res = await fetch('/api/delete-image', {
-            method: 'POST',
-            body: JSON.stringify({ id: imageId, username: piUser.username })
-        });
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
+    body: JSON.stringify({ id: imageId, username: piUser.username })
+});
         if (res.ok) parent.remove();
         else { alert(t.error); parent.style.opacity = '1'; }
     } catch(e) { console.error(e); }
