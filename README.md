@@ -1,2 +1,0 @@
-# AiWay
-AiWay
