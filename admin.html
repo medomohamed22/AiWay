@@ -190,15 +190,15 @@
         window.location.reload();
     }
 
-    // --- Fetch Data from Backend API ---
-    // هذه الدالة تتصل بملف الباك إند get-admin-stats.js الذي أنشأناه سابقاً
+    // --- Fetch Data from Backend API (Vercel) ---
     async function fetchData(btn = null, passOverride = null) {
         if(btn) btn.classList.add('loading');
         
         const passToSend = passOverride || sessionPass;
 
         try {
-            const res = await fetch('/.netlify/functions/get-admin-stats', {
+            // التعديل هنا: استخدام مسار Vercel بدلاً من Netlify
+            const res = await fetch('/api/get-admin-stats', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: passToSend })
@@ -268,7 +268,6 @@
     }
 
     // Check Session on Load
-    // إذا كان المستخدم قد دخل سابقاً، نحاول الدخول مباشرة
     window.onload = () => {
         if (sessionPass) {
             fetchData(null, sessionPass).then(success => {
