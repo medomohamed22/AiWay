@@ -1,24 +1,16 @@
 // دالة النسخ الذكية (تقرأ من الصفحة مباشرة)
 function copyCodeFromBlock(btn) {
-    // 1. العثور على الحاوية الأب (code-wrapper)
     const wrapper = btn.closest('.code-wrapper');
     if (!wrapper) return;
-
-    // 2. العثور على عنصر الكود داخل الحاوية
     const codeElement = wrapper.querySelector('code');
     if (!codeElement) return;
-
-    // 3. جلب النص كما هو مكتوب
     const textToCopy = codeElement.innerText || codeElement.textContent;
-
-    // 4. النسخ للحافظة
     navigator.clipboard.writeText(textToCopy).then(() => {
         const originalHTML = btn.innerHTML;
         btn.innerHTML = '✅ Copied!';
         setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
     }).catch(err => {
         console.error('Copy failed:', err);
-        // Fallback للأجهزة القديمة
         const textarea = document.createElement('textarea');
         textarea.value = textToCopy;
         document.body.appendChild(textarea);
@@ -28,7 +20,6 @@ function copyCodeFromBlock(btn) {
         btn.innerHTML = '✅ Copied!';
     });
 }
-
 
 /* =========================
    CONFIG
@@ -46,6 +37,8 @@ const MODELS = [
     // ==================== قسم الفيديو الخاص ====================
     { id: 'grok-video', category: 'Video Generation', name: 'Grok Video', type: 'image', cost: 5, desc: 'Grok Powered Video' }
 ];
+
+const VIDEO_MODELS = ['grok-video'];   // ✅ دعم الفيديو
 
 const RATIOS = [
     { id: 'square', label: '1:1', w: 1024, h: 1024, icon: '<rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>' },
@@ -120,19 +113,13 @@ function renderMarkdownSafe(markdown) {
     const md = String(markdown || "");
     let dirty = "";
     try { dirty = marked.parse(md); } catch (e) { dirty = md; }
-
     let safe = dirty;
     if (window.DOMPurify && typeof DOMPurify.sanitize === "function") {
         safe = DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
     }
-
-    // fallback لو الـ markdown خرج فاضي أو اتكسر
     const plain = (safe || "").replace(/<[^>]*>/g, '').trim();
     if (!plain || plain.length < 2) {
-        const escaped = md
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+        const escaped = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         return `<pre style="white-space:pre-wrap; margin:0; font-family:monospace; color:#ddd;">${escaped}</pre>`;
     }
     return safe;
@@ -144,14 +131,7 @@ function renderMarkdownSafe(markdown) {
 const renderer = new marked.Renderer();
 renderer.code = function(code, language) {
     const validLang = language || 'plaintext';
-    // تنظيف الكود للعرض فقط
-    const escapedCode = String(code || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    // نضع الكود داخل <pre><code> بشكل طبيعي
-    // الزر الآن يستدعي دالة تبحث عن الكود المجاور
+    const escapedCode = String(code || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return `
     <div class="code-wrapper">
         <div class="code-header">
@@ -160,26 +140,10 @@ renderer.code = function(code, language) {
                 📋 Copy Code
             </button>
         </div>
-        <pre><code class="language-${validLang}">${escapedCode}</code></pre>
+        <pre><code class="language-\( {validLang}"> \){escapedCode}</code></pre>
     </div>`;
 };
 marked.setOptions({ renderer: renderer });
-
-function copyCodeBlock(btn) {
-    // جلب الكود المشفر من خاصية data-code
-    const encodedData = btn.getAttribute('data-code');
-    if (!encodedData) return;
-    
-    try {
-        // فك التشفير
-        const code = decodeURIComponent(encodedData);
-        // استدعاء دالة النسخ الأصلية
-        copyText(btn, code);
-    } catch (e) {
-        console.error("Copy Error:", e);
-    }
-}
-
 
 function copyText(btn, text) {
     const value = String(text || "");
@@ -189,7 +153,6 @@ function copyText(btn, text) {
         setTimeout(() => { btn.innerHTML = originalText; }, 2000);
     }).catch(err => {
         console.error('Failed to copy', err);
-        // fallback
         try {
             const ta = document.createElement("textarea");
             ta.value = value;
@@ -210,12 +173,11 @@ const Pi = window.Pi;
 
 document.addEventListener('DOMContentLoaded', () => {
     try { Pi.init({ version: "2.0", sandbox: false }); } catch (e) { console.error("Pi Init Error:", e); }
-
     renderModelMenu();
     renderAspectMenu();
     updateAspectUI();
     applyLanguage('en');
-    updateHeaderModelUI(); // ✅ FIX: بعد applyLanguage علشان placeholder يبقى صح حسب نوع الموديل
+    updateHeaderModelUI();
     fetchPiPrice();
     setInterval(fetchPiPrice, 10000);
 });
@@ -226,9 +188,7 @@ async function fetchPiPrice() {
         const data = await res.json();
         if (data.price) {
             currentPiPrice = data.price;
-            if (document.getElementById('buyModal').style.display === 'flex') {
-                renderBuyGrid();
-            }
+            if (document.getElementById('buyModal').style.display === 'flex') renderBuyGrid();
         }
     } catch(e) { console.log("Using default price"); }
 }
@@ -239,7 +199,7 @@ function toggleLanguage() {
     document.getElementById('langBtn').textContent = label;
     document.getElementById('landingLangBtn').textContent = label;
     applyLanguage(currentLang);
-    updateHeaderModelUI(); // ✅ FIX: لضمان placeholder الصحيح حسب نوع الموديل
+    updateHeaderModelUI();
 }
 
 function applyLanguage(lang) {
@@ -252,15 +212,10 @@ function applyLanguage(lang) {
     document.getElementById('txtLandingDesc').textContent = t.desc;
     document.getElementById('txtLogin').textContent = t.login;
     document.getElementById('txtFeaturesTitle').textContent = t.features;
-
     const soonVideo = document.getElementById('txtSoonVideo');
-    const soonText = document.getElementById('txtSoonText');
     if (soonVideo) soonVideo.textContent = t.soon;
-    if (soonText) soonText.textContent = t.soon;
-
     document.getElementById('txtDlTitle').textContent = t.dlTitle;
     document.getElementById('txtDlDesc').innerHTML = t.dlDesc.replace(/\n/g, '<br>');
-
     renderModelMenu();
     renderBuyGrid();
 }
@@ -292,14 +247,11 @@ async function fetchBalance() {
 function updateHeaderModelUI() {
     const m = MODELS.find(x => x.id === currentModel) || MODELS[0];
     currentModel = m.id;
-
     const badge = `<span class="header-cost-badge">${m.cost}</span>`;
     document.getElementById('headerModelName').innerHTML = `${m.name} ${badge}`;
-
     const aspectBtn = document.getElementById('aspectTriggerBtn');
     const input = document.getElementById('promptInput');
     const t = TRANSLATIONS[currentLang];
-
     if (m.type === 'text') {
         aspectBtn.style.display = 'none';
         input.placeholder = (currentLang === 'ar') ? "اسأل أي شيء..." : "Ask me anything...";
@@ -312,36 +264,31 @@ function updateHeaderModelUI() {
 function renderModelMenu() {
     const menu = document.getElementById('modelMenu');
     menu.innerHTML = '';
-
     const categories = [...new Set(MODELS.map(m => m.category))];
-
     categories.forEach(cat => {
         const title = document.createElement('div');
         title.className = 'menu-category-title';
         title.innerText = cat;
         menu.appendChild(title);
-
         const catModels = MODELS.filter(m => m.category === cat);
-
         catModels.forEach(m => {
             const div = document.createElement('div');
             div.className = `menu-option ${m.id === currentModel ? 'active' : ''}`;
             div.onclick = () => selectModel(m);
-
             const tagType = m.type === 'image' ? 'tag-img' : 'tag-txt';
             const tagLabel = m.type === 'image' ? 'IMG' : 'CHAT';
-
             div.innerHTML = `
                 <div>
                     <div style="font-weight:700; font-size:14px; color:white; display:flex; align-items:center;">
                         ${m.name}
                     </div>
                     <div style="font-size:11px; color:#888; margin-top:3px;">
-                        <span class="model-tag ${tagType}">${tagLabel}</span> ${m.desc}
+                        <span class="model-tag \( {tagType}"> \){tagLabel}</span> ${m.desc}
                     </div>
                 </div>
                 <div style="font-size:11px; font-weight:bold; color:var(--pi-gold); background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:6px;">
-                    ${m.cost} </div>
+                    ${m.cost}
+                </div>
             `;
             menu.appendChild(div);
         });
@@ -439,21 +386,15 @@ async function buyTokens(pkg, piAmount) {
            onReadyForServerApproval: async (paymentId) => {
     const res = await fetch('/api/approve', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentId }) 
     });
-    
-    if (!res.ok) {
-        // نصيحة: اقرأ الخطأ لتعرف السبب بدقة
-        const errData = await res.json();
-        console.error("Approve Error:", errData);
-        throw new Error("Approval Failed");
-    }
+    if (!res.ok) throw new Error("Approval Failed");
 },
            onReadyForServerCompletion: async (paymentId, txid) => {
     const res = await fetch('/api/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // ✅ تأكد من وجود هذا السطر
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             paymentId,
             txid,
@@ -464,13 +405,12 @@ async function buyTokens(pkg, piAmount) {
             pAmount: paymentData.amount
         })
     });
-    // ... باقي الكود
-                if (!res.ok) throw new Error("Completion Failed");
-                const data = await res.json();
-                document.getElementById('tokenBalance').textContent = data.newBalance;
-                document.getElementById('buyModal').style.display = 'none';
-                alert(`+${pkg.tokens} Tokens!`);
-            },
+    if (!res.ok) throw new Error("Completion Failed");
+    const data = await res.json();
+    document.getElementById('tokenBalance').textContent = data.newBalance;
+    document.getElementById('buyModal').style.display = 'none';
+    alert(`+${pkg.tokens} Tokens!`);
+},
             onCancel: (paymentId) => { console.log("Cancelled"); },
             onError: (error) => { console.error("Error", error); }
         });
@@ -486,7 +426,7 @@ function updateCooldownUI() {
     if (now < cooldownEndTime) {
         const remaining = Math.ceil((cooldownEndTime - now) / 1000);
         btn.disabled = true; icon.style.display = 'none'; countEl.style.display = 'block';
-        countEl.innerText = `${t.wait}\n${remaining}${t.sec}`;
+        countEl.innerText = `\( {t.wait}\n \){remaining}${t.sec}`;
         requestAnimationFrame(updateCooldownUI);
     } else {
         btn.disabled = false; icon.style.display = 'block'; countEl.style.display = 'none';
@@ -503,12 +443,8 @@ async function fetchWithRetry(url, options, retries = 2) {
     for (let i = 0; i <= retries; i++) {
         try {
             const res = await fetch(url, options);
-
-            // ✅ FIX: رجّع الريسبونس حتى لو 403/429/500 عشان نقرأ رسالة الخطأ
             if (res) return res;
-        } catch (e) {
-            lastErr = e;
-        }
+        } catch (e) { lastErr = e; }
         await new Promise(r => setTimeout(r, 1200));
     }
     throw lastErr || new Error("Request failed after retries");
@@ -516,74 +452,58 @@ async function fetchWithRetry(url, options, retries = 2) {
 
 async function sendPrompt() {
   if (Date.now() < cooldownEndTime) return;
-  
   const input = document.getElementById('promptInput');
   const text = input.value.trim();
   if (!text || !piUser) return;
-  
   input.value = '';
   addMessage(text, 'user');
-  
   const m = MODELS.find(x => x.id === currentModel) || MODELS[0];
   const isChat = m.type === 'text';
   const loadingId = renderLoader(isChat);
-  
   triggerCooldown(5);
-  
   try {
-    // ✅ ابعت prompt دايمًا (ده اللي بيمنع Missing data)
     let payload = {
       prompt: String(text),
       username: piUser.username,
       pi_uid: piUser.uid,
       model: currentModel
     };
-    
     if (isChat) {
-      // ✅ ابعت messages كمان لو شات
       payload.messages = [...normalizeMessages(chatHistory), { role: "user", content: String(text) }];
     } else {
-      // ✅ ابعت المقاسات لو صورة
       payload.width = currentWidth;
       payload.height = currentHeight;
     }
-    
     const response = await fetchWithRetry('/api/generate-and-save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    
     const status = response.status;
     let data = {};
     try { data = await response.json(); } catch {}
-    
     safeRemove(loadingId);
-    
     if (status === 403) {
       if (data?.error === 'INSUFFICIENT_TOKENS') addNoTokenCard();
       else addBotText(`⚠️ ${data?.error || "Forbidden"}`);
       return;
     }
-    
     if (status === 429) {
       addBotText(`⚠️ ${TRANSLATIONS[currentLang].rateLimit}`);
       triggerCooldown(25);
       return;
     }
-    
     if (!response.ok) {
       addBotText(`⚠️ Error (${status}): ${data?.error || data?.message || "Server error"}`);
       return;
     }
-    
     if (data?.newBalance !== undefined) {
       document.getElementById('tokenBalance').textContent = data.newBalance;
     }
-    
-    const reply = (typeof data?.reply === "string") ? data.reply : (typeof data?.text === "string" ? data.text : "");
-    const imgUrl = data?.imageUrl || data?.image_url || data?.url || "";
-    
+    const reply = (typeof data?.reply === "string") ? data.reply : "";
+    const imgUrl = data?.imageUrl || data?.image_url || "";
+    const videoUrl = data?.videoUrl || data?.video_url || "";
+
     if (reply && reply.trim() !== "") {
       chatHistory.push({ role: "user", content: String(text) });
       chatHistory.push({ role: "assistant", content: String(reply) });
@@ -591,14 +511,15 @@ async function sendPrompt() {
       addBotText(reply);
       return;
     }
-    
-    if (imgUrl) {
-      addBotImage(imgUrl, data?.width, data?.height);
+    if (videoUrl) {
+      addBotMedia(videoUrl, 'video');
       return;
     }
-    
+    if (imgUrl) {
+      addBotMedia(imgUrl, 'image', data?.width, data?.height);
+      return;
+    }
     addBotText("⚠️ AI returned no content");
-    
   } catch (error) {
     console.error("Frontend Error:", error);
     triggerCooldown(12);
@@ -610,12 +531,7 @@ async function sendPrompt() {
 function addBotText(text) {
     const div = document.createElement('div');
     div.className = 'message bot';
-
-    // 1. تحويل النص من Markdown إلى HTML باستخدام marked
-    // gfm: true يفعل الجداول والقوائم المحسنة
-    // breaks: true يحول الضغط على Enter إلى سطر جديد
     const htmlContent = marked.parse(text, { gfm: true, breaks: true });
-
     div.innerHTML = `
         <div class="msg-bubble">
             <div class="markdown-body">${htmlContent}</div>
@@ -626,23 +542,13 @@ function addBotText(text) {
             </div>
         </div>
     `;
-
-    // 2. البحث عن أكواد البرمجة وتغليفها في الصندوق الأسود (Code Box)
     const preBlocks = div.querySelectorAll('pre');
-    
     preBlocks.forEach(pre => {
-        // إذا كان الـ pre موجود بالفعل داخل wrapper نتخطاه (للحماية)
         if (pre.parentNode.classList.contains('code-wrapper')) return;
-
-        // إنشاء الصندوق الخارجي
         const wrapper = document.createElement('div');
         wrapper.className = 'code-wrapper';
-
-        // محاولة معرفة لغة الكود (اختياري)
         let langClass = pre.querySelector('code')?.className || '';
         let lang = langClass.replace('language-', '') || 'CODE';
-
-        // إنشاء الهيدر (شريط العنوان وزر النسخ)
         const header = document.createElement('div');
         header.className = 'code-header';
         header.innerHTML = `
@@ -652,26 +558,18 @@ function addBotText(text) {
                 Copy Code
             </button>
         `;
-
-        // إدخال الصندوق الجديد في الصفحة مكان الـ pre القديم
         pre.parentNode.insertBefore(wrapper, pre);
-        
-        // نقل الهيدر والـ pre داخل الصندوق
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
     });
-
     document.getElementById('chatContainer').appendChild(div);
     scrollToBottom();
 }
-
-
 
 function renderLoader(isChat) {
     const div = document.createElement('div');
     div.className = 'message bot';
     div.id = 'loading-' + Date.now();
-
     if (isChat) {
         div.innerHTML = `
             <div class="chat-loading-bubble">
@@ -688,7 +586,6 @@ function renderLoader(isChat) {
             </div>
         `;
     }
-
     document.getElementById('chatContainer').appendChild(div);
     scrollToBottom();
     return div.id;
@@ -722,25 +619,40 @@ function addNoTokenCard() {
     scrollToBottom();
 }
 
-function addBotImage(url, w, h) {
+/* ✅ دالة عرض الفيديو والصور الجديدة */
+function addBotMedia(url, type = 'image', w, h) {
     const t = TRANSLATIONS[currentLang];
     const div = document.createElement('div');
     div.className = 'message bot';
-
-    const ww = Number(w) || currentWidth;
-    const hh = Number(h) || currentHeight;
-    let aspectRatio = ww / hh;
-
-    div.innerHTML = `
-        <div class="msg-bubble">
-            <div class="image-container" style="aspect-ratio: ${aspectRatio};">
-                <img src="${url}" class="msg-image" onload="this.classList.add('loaded')">
+    if (type === 'video') {
+        div.innerHTML = `
+            <div class="msg-bubble">
+                <div class="image-container" style="aspect-ratio: 16/9;">
+                    <video class="msg-image" controls autoplay muted loop playsinline style="width:100%; height:auto; border-radius:20px; background:#000;">
+                        <source src="${url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="download-bar">
+                    <button class="d-btn" onclick="forceDownload('\( {url}', this)"> \){t.download} MP4</button>
+                </div>
             </div>
-            <div class="download-bar">
-                <button class="d-btn" onclick="forceDownload('${url}', this)">${t.download}</button>
+        `;
+    } else {
+        const ww = Number(w) || currentWidth;
+        const hh = Number(h) || currentHeight;
+        let aspectRatio = ww / hh;
+        div.innerHTML = `
+            <div class="msg-bubble">
+                <div class="image-container" style="aspect-ratio: ${aspectRatio};">
+                    <img src="${url}" class="msg-image" onload="this.classList.add('loaded')">
+                </div>
+                <div class="download-bar">
+                    <button class="d-btn" onclick="forceDownload('\( {url}', this)"> \){t.download}</button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     document.getElementById('chatContainer').appendChild(div);
     scrollToBottom();
 }
@@ -752,7 +664,6 @@ function scrollToBottom() {
 
 async function forceDownload(url, btn) {
     const downloadUrl = url + "?download=";
-
     try {
         await navigator.clipboard.writeText(downloadUrl);
         showInfoModal(downloadUrl);
@@ -792,17 +703,26 @@ async function openGallery() {
             grid.innerHTML = `<div style="color:#777; padding:20px; grid-column: span 2; text-align:center;">${t.noImages}</div>`;
             return;
         }
-
         images.forEach(img => {
             const div = document.createElement('div');
             div.className = 'gallery-item';
-            div.innerHTML = `
-                <img src="${img.url}" loading="lazy">
-                <div class="gallery-actions">
-                    <button class="g-btn g-down" onclick="forceDownload('${img.url}', this)">${t.download}</button>
-                    <button class="g-btn g-del" onclick="deleteImage('${img.id}', this)">${t.delete}</button>
-                </div>
-            `;
+            if (img.video_url) {
+                div.innerHTML = `
+                    <video src="${img.video_url}" style="width:100%; height:100%; object-fit:cover;" muted loop></video>
+                    <div class="gallery-actions">
+                        <button class="g-btn g-down" onclick="forceDownload('\( {img.video_url}', this)"> \){t.download}</button>
+                        <button class="g-btn g-del" onclick="deleteImage('\( {img.id}', this)"> \){t.delete}</button>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <img src="${img.url || img.image_url}" loading="lazy">
+                    <div class="gallery-actions">
+                        <button class="g-btn g-down" onclick="forceDownload('\( {img.url || img.image_url}', this)"> \){t.download}</button>
+                        <button class="g-btn g-del" onclick="deleteImage('\( {img.id}', this)"> \){t.delete}</button>
+                    </div>
+                `;
+            }
             grid.appendChild(div);
         });
     } catch (e) {
@@ -817,10 +737,10 @@ async function deleteImage(imageId, btn) {
     parent.style.opacity = '0.5';
     try {
         const res = await fetch('/api/delete-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
-    body: JSON.stringify({ id: imageId, username: piUser.username })
-});
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: imageId, username: piUser.username })
+        });
         if (res.ok) parent.remove();
         else { alert(t.error); parent.style.opacity = '1'; }
     } catch(e) { console.error(e); }
@@ -838,51 +758,41 @@ document.addEventListener('click', (e) => {
 
 async function loadChatHistory() {
     if (!piUser) return;
-
     const loadingDiv = document.createElement('div');
     loadingDiv.innerHTML = '<div style="text-align:center; color:#555; font-size:12px; margin:10px;">Loading history...</div>';
     document.getElementById('chatContainer').appendChild(loadingDiv);
-
     try {
         const res = await fetch(`/api/get-chat-history?username=${piUser.username}`);
         const historyData = await res.json();
-
         document.getElementById('emptyMsg').style.display = 'none';
         loadingDiv.remove();
-
         const list = Array.isArray(historyData) ? historyData : [];
-
         list.forEach(item => {
             if (item?.prompt) {
                 addMessage(item.prompt, 'user');
                 chatHistory.push({ role: "user", content: String(item.prompt) });
             }
-
             if (item?.type === 'text' && item?.bot_response) {
                 addBotText(item.bot_response);
                 chatHistory.push({ role: "assistant", content: String(item.bot_response) });
+            } else if (item?.video_url) {
+                addBotMedia(item.video_url, 'video');
             } else if (item?.image_url || item?.imageUrl) {
-                addBotImage(item.image_url || item.imageUrl, item.width, item.height);
+                addBotMedia(item.image_url || item.imageUrl, 'image', item.width, item.height);
             }
         });
-
-        // ✅ FIX: نظّف الهستوري
         chatHistory = normalizeMessages(chatHistory).slice(-24);
-
         scrollToBottom();
-
     } catch (e) {
         console.error("Error loading history:", e);
         loadingDiv.innerHTML = '<div style="text-align:center; color:red; font-size:12px;">Failed to load history</div>';
     }
 }
+
 function copyCode(btn) {
-    // العثور على الكود داخل الصندوق
     const code = btn.closest('.code-wrapper').querySelector('code');
     if(code) {
-        // نسخ النص
         navigator.clipboard.writeText(code.innerText).then(() => {
-            // تغيير النص لـ "تم" مؤقتاً
             const old = btn.innerHTML; 
             btn.innerHTML = '<span>✅ تم!</span>';
             setTimeout(() => btn.innerHTML = old, 2000);
