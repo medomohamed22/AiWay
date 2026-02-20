@@ -383,34 +383,34 @@ async function buyTokens(pkg, piAmount) {
             metadata: { type: "tokens", tokenAmount: pkg.tokens, pi_uid: piUser.uid }
         };
         await Pi.createPayment(paymentData, {
-           onReadyForServerApproval: async (paymentId) => {
-    const res = await fetch('/api/approve', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId }) 
-    });
-    if (!res.ok) throw new Error("Approval Failed");
-},
-           onReadyForServerCompletion: async (paymentId, txid) => {
-    const res = await fetch('/api/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            paymentId,
-            txid,
-            pi_uid: piUser.uid,
-            username: piUser.username,
-            tokenAmount: pkg.tokens,
-            usdAmount: pkg.usd,
-            pAmount: paymentData.amount
-        })
-    });
-    if (!res.ok) throw new Error("Completion Failed");
-    const data = await res.json();
-    document.getElementById('tokenBalance').textContent = data.newBalance;
-    document.getElementById('buyModal').style.display = 'none';
-    alert(`+${pkg.tokens} Tokens!`);
-},
+            onReadyForServerApproval: async (paymentId) => {
+                const res = await fetch('/api/approve', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId }) 
+                });
+                if (!res.ok) throw new Error("Approval Failed");
+            },
+            onReadyForServerCompletion: async (paymentId, txid) => {
+                const res = await fetch('/api/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paymentId,
+                        txid,
+                        pi_uid: piUser.uid,
+                        username: piUser.username,
+                        tokenAmount: pkg.tokens,
+                        usdAmount: pkg.usd,
+                        pAmount: paymentData.amount
+                    })
+                });
+                if (!res.ok) throw new Error("Completion Failed");
+                const data = await res.json();
+                document.getElementById('tokenBalance').textContent = data.newBalance;
+                document.getElementById('buyModal').style.display = 'none';
+                alert(`+${pkg.tokens} Tokens!`);
+            },
             onCancel: (paymentId) => { console.log("Cancelled"); },
             onError: (error) => { console.error("Error", error); }
         });
@@ -619,7 +619,7 @@ function addNoTokenCard() {
     scrollToBottom();
 }
 
-/* ✅ دالة عرض الفيديو والصور الجديدة */
+/* ✅ دالة عرض الفيديو والصور الجديدة (مع إصلاح الـ escaping) */
 function addBotMedia(url, type = 'image', w, h) {
     const t = TRANSLATIONS[currentLang];
     const div = document.createElement('div');
