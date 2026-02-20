@@ -10,6 +10,7 @@ const MODEL_COSTS = {
     'klein': 2,
     'klein-large': 4,
     'gptimage': 5,
+    'grok-video': 5,          // ✅ الموديل الجديد Grok Video
     'openai-large': 3,
     'openai-fast': 1,
     'openai': 1
@@ -94,13 +95,13 @@ export default async function handler(req, res) {
             botReply = chatData.choices[0].message.content;
 
         } else {
-            // مسار الصور
+            // مسار الصور (Grok Video هيشتغل هنا)
             console.log("Processing Image Request (Vercel):", selectedModel);
             const safeWidth = width || 1024;
             const safeHeight = height || 1024;
             const seed = Math.floor(Math.random() * 1000000);
             
-            let targetUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${selectedModel}&width=${safeWidth}&height=${safeHeight}&seed=${seed}&nologo=true`;
+            let targetUrl = `https://gen.pollinations.ai/image/\( {encodeURIComponent(prompt)}?model= \){selectedModel}&width=\( {safeWidth}&height= \){safeHeight}&seed=${seed}&nologo=true`;
             if (POLLINATIONS_KEY) targetUrl += `&key=${encodeURIComponent(POLLINATIONS_KEY)}`;
 
             const imageRes = await fetch(targetUrl);
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
             const arrayBuffer = await imageRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
-            uploadedFileName = `${username}_${Date.now()}.jpg`;
+            uploadedFileName = `\( {username}_ \){Date.now()}.jpg`;
             const { error: uploadError } = await supabase.storage.from('nano_images').upload(uploadedFileName, buffer, { contentType: 'image/jpeg' });
             if (uploadError) throw uploadError;
 
