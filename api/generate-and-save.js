@@ -54,9 +54,7 @@ export default async function handler(req, res) {
         let mediaType = isVideo ? 'video' : 'image';
 
         if (isChat) {
-            // ... (كود الشات بدون تغيير)
             console.log("Processing Chat Request:", selectedModel);
-            // (الكود القديم للشات كاملاً هنا - ما تغيرش)
             let finalMessages = messages || [];
             const systemMsg = { role: "system", content: "You are a helpful assistant. Use Markdown for code." };
             if (finalMessages.length === 0 || finalMessages[0].role !== 'system') finalMessages.unshift(systemMsg);
@@ -90,7 +88,10 @@ export default async function handler(req, res) {
             if (POLLINATIONS_KEY) targetUrl += `&key=${encodeURIComponent(POLLINATIONS_KEY)}`;
 
             const mediaRes = await fetch(targetUrl);
-            if (!mediaRes.ok) throw new Error(`Gen Failed: ${mediaRes.status}`);
+            if (!mediaRes.ok) {
+                const errTxt = await mediaRes.text();  // ✅ التعديل: اقرأ رسالة الخطأ الكاملة
+                throw new Error(`Gen Failed: ${mediaRes.status} - ${errTxt || 'No details'}`);
+            }
 
             const arrayBuffer = await mediaRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
