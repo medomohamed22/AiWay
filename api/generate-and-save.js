@@ -1,157 +1,115 @@
-// ملف: api/generate-and-save.js
+// Vercel Serverless Function: /api/generate-and-save
+// Keeps GEMINI_API_KEY hidden on the server.
 
-const { createClient } = require('@supabase/supabase-js');
+const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
+const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview';
 
-// Vercel يدعم fetch تلقائياً في البيئات الحديثة
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+function json(res, status, body) {
+  res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
+}
 
-const MODEL_COSTS = {
-    'imagen-4': 1,
-    'klein': 2,
-    'klein-large': 4,
-    'gptimage': 5,
-    'openai-large': 3,
-    'openai-fast': 1,
-    'openai': 1
-};
+function safeMessages(messages = []) {
+  return Array.isArray(messages)
+    ? messages
+        .filter(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string')
+        .slice(-12)
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }))
+    : [];
+}
 
-// 1. تغيير تعريف الدالة الرئيسي
+async function callGeminiGenerateContent({ model, contents, generationConfig }) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('Missing GEMINI_API_KEY');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents, generationConfig })
+  });
+
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = data?.error?.message || `Gemini request failed with ${r.status}`;
+    const err = new Error(msg);
+    err.status = r.status;
+    err.details = data;
+    throw err;
+  }
+  return data;
+}
+
+function extractText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('').trim();
+}
+
+function extractImageDataUrl(data) {
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  for (const p of parts) {
+    const inline = p.inlineData || p.inline_data;
+    if (inline?.data) {
+      const mime = inline.mimeType || inline.mime_type || 'image/png';
+      return `data:${mime};base64,${inline.data}`;
+    }
+  }
+  return '';
+}
+
 export default async function handler(req, res) {
-    
-    // 2. التحقق من الطريقة (req.method)
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
+
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const prompt = String(body.prompt || '').trim();
+    const modelFromClient = String(body.model || 'openai-fast');
+    if (!prompt) return json(res, 400, { error: 'Missing prompt' });
+
+    const isImage = ['imagen-4', 'gptimage', 'klein', 'klein-large', 'gemini-image'].includes(modelFromClient);
+
+    if (isImage) {
+      const width = Number(body.width) || 1024;
+      const height = Number(body.height) || 1024;
+      const data = await callGeminiGenerateContent({
+        model: IMAGE_MODEL,
+        contents: [{
+          role: 'user',
+          parts: [{ text: `${prompt}\n\nGenerate one high quality image. Aspect ratio target: ${width}:${height}. Do not include extra text unless needed.` }]
+        }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE']
+        }
+      });
+
+      const imageUrl = extractImageDataUrl(data);
+      const reply = extractText(data);
+      if (!imageUrl) return json(res, 502, { error: 'Gemini returned no image', reply });
+      return json(res, 200, { imageUrl, width, height, reply, newBalance: 999 });
     }
 
-    let uploadedFileName = null;
-
-    try {
-        // 3. قراءة البيانات مباشرة من req.body (بدون parsing)
-        const { prompt, username, pi_uid, model, width, height, messages } = req.body;
-
-        if (!prompt || !username || !pi_uid) {
-            return res.status(400).json({ error: "بيانات ناقصة" });
-        }
-
-        const selectedModel = model ? model.trim() : 'imagen-4';
-        const POLLINATIONS_KEY = process.env.POLLINATIONS_API_KEY || ""; 
-
-        const isChat = selectedModel.includes('openai') || selectedModel.includes('gpt-5') || (messages && messages.length > 0);
-        const cost = MODEL_COSTS[selectedModel] || 5;
-
-        // --- التحقق من الرصيد ---
-        const { data: userCheck, error: checkError } = await supabase
-            .from('users')
-            .select('token_balance')
-            .eq('pi_uid', pi_uid)
-            .single();
-
-        if (checkError || !userCheck) {
-            return res.status(403).json({ error: 'User Check Failed' });
-        }
-
-        if (userCheck.token_balance < cost) {
-            return res.status(403).json({ error: 'INSUFFICIENT_TOKENS', currentBalance: userCheck.token_balance });
-        }
-
-        let botReply = null;
-        let finalImageUrl = null;
-
-        // --- التنفيذ ---
-        if (isChat) {
-            console.log("Processing Chat Request (Vercel):", selectedModel);
-
-            let finalMessages = messages || [];
-            const systemMsg = { role: "system", content: "You are a helpful assistant. Use Markdown for code." };
-            
-            if (finalMessages.length === 0 || finalMessages[0].role !== 'system') {
-                finalMessages.unshift(systemMsg);
-            }
-            if (finalMessages.length === 1 && prompt) {
-                finalMessages.push({ role: "user", content: prompt });
-            }
-
-            const headers = { "Content-Type": "application/json" };
-            if (POLLINATIONS_KEY) headers["Authorization"] = `Bearer ${POLLINATIONS_KEY}`;
-
-            const chatUrl = `https://gen.pollinations.ai/v1/chat/completions?key=${encodeURIComponent(POLLINATIONS_KEY)}`;
-
-            const chatResponse = await fetch(chatUrl, {
-                method: "POST",
-                headers: headers,
-                body: JSON.stringify({ model: selectedModel, messages: finalMessages })
-            });
-
-            if (!chatResponse.ok) {
-                const errTxt = await chatResponse.text();
-                if (chatResponse.status === 401 && !POLLINATIONS_KEY) {
-                    throw new Error("Missing API Key in Server Env");
-                }
-                throw new Error(`Chat API Error: ${chatResponse.status} - ${errTxt}`);
-            }
-
-            const chatData = await chatResponse.json();
-            botReply = chatData.choices[0].message.content;
-
-        } else {
-            // مسار الصور
-            console.log("Processing Image Request (Vercel):", selectedModel);
-            const safeWidth = width || 1024;
-            const safeHeight = height || 1024;
-            const seed = Math.floor(Math.random() * 1000000);
-            
-            let targetUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${selectedModel}&width=${safeWidth}&height=${safeHeight}&seed=${seed}&nologo=true`;
-            if (POLLINATIONS_KEY) targetUrl += `&key=${encodeURIComponent(POLLINATIONS_KEY)}`;
-
-            const imageRes = await fetch(targetUrl);
-            if (!imageRes.ok) throw new Error(`Image Gen Failed: ${imageRes.status}`);
-            
-            const arrayBuffer = await imageRes.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-
-            uploadedFileName = `${username}_${Date.now()}.jpg`;
-            const { error: uploadError } = await supabase.storage.from('nano_images').upload(uploadedFileName, buffer, { contentType: 'image/jpeg' });
-            if (uploadError) throw uploadError;
-
-            const { data: publicUrlData } = supabase.storage.from('nano_images').getPublicUrl(uploadedFileName);
-            finalImageUrl = publicUrlData.publicUrl;
-        }
-
-        // --- خصم الرصيد ---
-        const { data: userFinal } = await supabase.from('users').select('token_balance').eq('pi_uid', pi_uid).single();
-        if (!userFinal || userFinal.token_balance < cost) throw new Error("INSUFFICIENT_TOKENS_LATE");
-        
-        const newBalance = userFinal.token_balance - cost;
-        await supabase.from('users').update({ token_balance: newBalance }).eq('pi_uid', pi_uid);
-
-        // --- الحفظ والرد ---
-        if (isChat) {
-            try {
-                await supabase.from('user_images').insert([{ 
-                    pi_uid: pi_uid, pi_username: username, prompt: prompt, bot_response: botReply, type: 'text' 
-                }]);
-            } catch (dbErr) { console.error("DB Error", dbErr); }
-
-            // 4. الرد بصيغة Vercel
-            return res.status(200).json({ success: true, reply: botReply, newBalance, type: 'text' });
-        } else {
-            try {
-                await supabase.from('user_images').insert([{ 
-                    pi_uid: pi_uid, pi_username: username, prompt: prompt, image_url: finalImageUrl, type: 'image' 
-                }]);
-            } catch (dbErr) { console.error("DB Error", dbErr); }
-
-            return res.status(200).json({ success: true, imageUrl: finalImageUrl, newBalance, type: 'image' });
-        }
-
-    } catch (error) {
-        console.error("Handler Error:", error);
-        if (uploadedFileName) await supabase.storage.from('nano_images').remove([uploadedFileName]);
-        
-        if (error.message === "INSUFFICIENT_TOKENS_LATE") {
-            return res.status(403).json({ error: 'INSUFFICIENT_TOKENS' });
-        }
-        
-        return res.status(500).json({ error: error.message });
+    const history = safeMessages(body.messages);
+    const contents = history.length ? history : [{ role: 'user', parts: [{ text: prompt }] }];
+    if (history.length && contents[contents.length - 1]?.parts?.[0]?.text !== prompt) {
+      contents.push({ role: 'user', parts: [{ text: prompt }] });
     }
+
+    const data = await callGeminiGenerateContent({
+      model: TEXT_MODEL,
+      contents,
+      generationConfig: { temperature: 0.7 }
+    });
+
+    const reply = extractText(data);
+    return json(res, 200, { reply: reply || 'Gemini returned no text.', newBalance: 999 });
+  } catch (e) {
+    console.error(e);
+    return json(res, e.status || 500, {
+      error: e.message || 'Server error',
+      hint: e.message === 'Missing GEMINI_API_KEY' ? 'Add GEMINI_API_KEY in Vercel Environment Variables.' : undefined
+    });
+  }
 }
