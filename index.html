@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>AIWay</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script defer src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+  <script defer src="/script.js"></script>
+  <style>
+    .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#27272a;padding:10px 16px;border-radius:12px;z-index:99999}
+    .hidden{display:none!important}.modal-overlay[aria-hidden="true"]{display:none}.status{color:#a1a1aa;font-size:12px;text-align:center}
+    .model-menu.open,.aspect-menu-dropdown.open,.modal-overlay[aria-hidden="false"]{display:flex}.msg-media{max-width:100%;border-radius:14px;display:block}
+  </style>
+</head>
+<body>
+  <main id="landingPage" class="landing-overlay">
+    <button id="landingLangBtn" class="landing-lang-btn" type="button">EN</button>
+    <div class="landing-logo-text">AIWay</div>
+    <p id="txtLandingDesc" class="landing-desc">تحدث وأنشئ صورًا باستخدام أشهر نماذج الذكاء الاصطناعي</p>
+    <div id="txtFeaturesTitle" class="features-title">يدعم الموقع</div>
+    <div class="features-container">
+      <button class="feature-btn f-images" type="button">AI Chat</button>
+      <button class="feature-btn f-images" type="button">AI Images</button>
+      <button class="feature-btn f-video" type="button">AI Video <span id="txtSoonVideo" class="soon-badge">قريبًا</span></button>
+    </div>
+    <button id="loginBtn" class="pi-login-btn" type="button"><span id="txtLogin">تسجيل دخول Pi</span></button>
+    <p id="loginStatus" class="status" role="status"></p>
+  </main>
+
+  <header class="header">
+    <button id="modelTrigger" class="header-title-area" type="button" aria-expanded="false">
+      <span id="headerModelName">جاري تحميل النماذج…</span><span id="modelChevron">⌄</span>
+    </button>
+    <div class="header-left">
+      <button id="langBtn" class="lang-btn" type="button">EN</button>
+      <button id="buyBtn" class="token-btn" type="button"><span id="tokenBalance">0</span> Tokens</button>
+    </div>
+  </header>
+  <div id="modelMenu" class="model-menu" role="menu"></div>
+
+  <section id="chatContainer" class="chat-container" aria-live="polite">
+    <div id="emptyMsg" class="status">اختر نموذجًا واكتب ما تتخيله</div>
+  </section>
+
+  <footer class="footer-container">
+    <div class="control-bar">
+      <button id="galleryBtn" class="footer-btn" type="button"><span id="txtGallery">المعرض</span></button>
+      <button id="aspectTriggerBtn" class="footer-btn" type="button"><span id="currentAspectIcon">□</span><span id="currentAspectLabel">1:1</span></button>
+      <div id="aspectMenu" class="aspect-menu-dropdown" role="menu"></div>
+    </div>
+    <form id="promptForm" class="input-row">
+      <textarea id="promptInput" class="input-box" maxlength="8000" rows="1" placeholder="اكتب رسالتك…"></textarea>
+      <button id="sendBtn" class="send-btn" type="submit"><span id="sendIcon">➤</span><span id="countdownEl" class="countdown-text hidden"></span></button>
+    </form>
+  </footer>
+
+  <section id="buyModal" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-window"><div class="modal-header"><b id="txtBuyTitle">شراء Tokens</b><button class="modal-close" type="button">✕</button></div><div id="buyGrid" class="buy-grid"></div></div>
+  </section>
+  <section id="galleryModal" class="modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-window"><div class="modal-header"><b id="txtGalleryTitle">معرضي</b><button class="modal-close" type="button">✕</button></div><div id="galleryGrid" class="gallery-grid"></div></div>
+  </section>
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>
