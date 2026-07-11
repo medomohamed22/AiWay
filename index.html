@@ -301,7 +301,7 @@ body {
     border: 1px solid var(--border); border-radius: 16px;
     display: none; flex-direction: column; gap: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
 }
-.model-menu { position: absolute; top: 60px; left: 0; right: 0; z-index: 90; padding: 10px; }
+.model-menu { position: absolute; top: 60px; left: 0; right: 0; z-index: 90; padding: 10px; max-height: 70vh; overflow-y: auto; }
 .aspect-menu-dropdown { position: absolute; bottom: 100%; right: 12px; width: 200px; margin-bottom: 8px; padding: 8px; z-index: 200; }
 
 .menu-option {
@@ -784,6 +784,8 @@ const MODELS = [
     { id: 'google/gemini-2.5-flash', category: 'Chat & Vision', name: 'Gemini 2.5 Flash', type: 'text', cost: 1, desc: 'Balanced & Fast' },
     { id: 'meta-llama/llama-3-8b-instruct', category: 'Chat & Vision', name: 'Llama 3 8B', type: 'text', cost: 1, desc: 'Highly Responsive' },
     { id: 'openai/gpt-4o-mini', category: 'Chat & Vision', name: 'GPT-4o Mini', type: 'text', cost: 2, desc: 'Smart & Creative' },
+    { id: 'deepseek/deepseek-chat', category: 'Chat & Vision', name: 'DeepSeek V3', type: 'text', cost: 1, desc: 'Fast & Smart Chat' },
+    { id: 'deepseek/deepseek-r1', category: 'Chat & Vision', name: 'DeepSeek R1', type: 'text', cost: 3, desc: 'Advanced Reasoning & Coding' },
 
     { id: 'black-forest-labs/flux-schnell', category: 'Image Generation', name: 'Flux Schnell', type: 'image', cost: 1, desc: 'Fast Generation' },
     { id: 'stabilityai/stable-diffusion-xl', category: 'Image Generation', name: 'SDXL 1.0', type: 'image', cost: 2, desc: 'High Detailed Visuals' }
@@ -1113,7 +1115,7 @@ function renderAspectMenu() {
                 <span style="font-size:13px; font-weight:600; color:white;">${r.label}</span>
             </div>
         `;
-        menu.appendChild(div);
+        menu.appendChild(menu.appendChild(div));
     });
 }
 
