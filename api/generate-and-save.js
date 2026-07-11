@@ -3,20 +3,20 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// أسعار الموديلات الافتراضية بناءً على تكلفة التشغيل أو رغبتك (معرفات OpenRouter الرسمية)
+// أسعار الموديلات المعتمدة رسمياً في السيرفر بناءً على معرفات OpenRouter
 const MODEL_COSTS = {
     // موديلات الصور
     'black-forest-labs/flux-schnell': 1,
     'stabilityai/stable-diffusion-xl': 2,
     
-    // موديلات النصوص/المحادثة
+    // موديلات النصوص والمحادثة
     'google/gemini-2.5-flash': 1,
     'meta-llama/llama-3-8b-instruct': 1,
     'openai/gpt-4o-mini': 2,
 
-    // موديلات DeepSeek المضافة حديثاً
-    'deepseek/deepseek-chat': 1,       // موديل DeepSeek V3 للمحادثة السريعة
-    'deepseek/deepseek-r1': 3          // موديل DeepSeek R1 للتفكير المعقد والبرمجة
+    // عائلة DeepSeek
+    'deepseek/deepseek-chat': 1,       // DeepSeek V3 للمحادثات السريعة
+    'deepseek/deepseek-r1': 3          // DeepSeek R1 للتفكير المعقد والبرمجة
 };
 
 function sendJson(res, statusCode, body) {
@@ -35,53 +35,92 @@ async function readBody(req) {
     return raw ? JSON.parse(raw) : {};
 }
 
-// دالة استخراج رابط الصورة أو النص المرجوع من OpenRouter
+// دالة استخراج النص أو رابط الصورة المرجوع من OpenRouter بدقة
 function parseOpenRouterResponse(data, isImage) {
     const content = data?.choices?.[0]?.message?.content || '';
     if (!isImage) return { text: content };
     
-    // إذا كان موديل صور، نبحث عن رابط الصورة داخل النص المرجوع
+    // البحث عن رابط الصورة داخل النص المرجوع (في حال الـ Markdown أو الرابط المباشر)
     const markdownUrlMatch = content.match(/!\[.*?\]\((https?:\/\/.*?)\)/);
     if (markdownUrlMatch) return { imageUrl: markdownUrlMatch[1] };
     
     const directUrlMatch = content.match(/(https?:\/\/[^\s]+)/);
     if (directUrlMatch) return { imageUrl: directUrlMatch[1] };
     
-    return { imageUrl: content }; // قد يعود الرابط أو الـ base64 مباشرة
+    return { imageUrl: content.trim() };
 }
 
-// التصدير باستخدام نظام ES Modules الحديث المتوافق مع إعدادات مشروعك
 export default async function handler(req, res) {
+    // السماح فقط بطلبات POST
     if (req.method !== 'POST') {
         return sendJson(res, 405, { error: 'Method Not Allowed' });
     }
     
+    // 1. فحص توكن شبكة Pi لتوثيق المستخدم وحمايته من الـ IDOR
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return sendJson(res, 401, { error: "Missing or invalid authorization token format" });
+    }
+    const piAccessToken = authHeader.split(' ')[1];
+    
+    let verifiedUser = null;
     let uploadedFileName = null;
     
     try {
-        const body = await readBody(req);
-        const { prompt, username, pi_uid, model, width, height, messages } = body;
+        // التحقق من التوكن مع سيرفرات Pi Network الرسمية
+        const piAuthRes = await fetch('https://api.minepi.com/v2/me', {
+            headers: { 'Authorization': `Bearer ${piAccessToken}` }
+        });
         
-        if (!prompt || !username || !pi_uid) {
-            return sendJson(res, 400, { error: "Missing data (prompt, username, or pi_uid)" });
+        if (!piAuthRes.ok) {
+            return sendJson(res, 401, { error: "Unauthorized / Invalid Pi Access Token" });
         }
         
-        // تحديد الموديل والخصم الافتراضي
-        const selectedModel = model || 'google/gemini-2.5-flash';
-        const cost = MODEL_COSTS[selectedModel] || 3; // 3 توكن افتراضي إذا لم يكن في القائمة
+        // استخراج بيانات المستخدم الحقيقية والموثقة بنجاح
+        verifiedUser = await piAuthRes.json(); // تحتوي على { uid, username }
         
-        // معرفة نوع الطلب (صور أم نصوص) بناءً على اسم الموديل المشحون
+    } catch (authErr) {
+        console.error("Pi Gate Auth Error:", authErr);
+        return sendJson(res, 500, { error: "Internal Auth Gateway Timeout" });
+    }
+    
+    try {
+        const body = await readBody(req);
+        const { prompt, model, width, height, messages } = body;
+        
+        if (!prompt) {
+            return sendJson(res, 400, { error: "Missing prompt data" });
+        }
+        
+        // ربط الحساب الموثق
+        const pi_uid = verifiedUser.uid;
+        const username = verifiedUser.username;
+        
+        // تحديد الموديل وحساب التكلفة الفعلي من السيرفر لمنع تلاعب العميل بالأسعار
+        const selectedModel = model || 'google/gemini-2.5-flash';
+        const cost = MODEL_COSTS[selectedModel] !== undefined ? MODEL_COSTS[selectedModel] : 3;
+        
         const isImage = selectedModel.includes('flux') || selectedModel.includes('diffusion') || selectedModel.includes('stable');
         
-        // 1. التحقق من الرصيد في Supabase
-        const { data: userCheck, error: checkError } = await supabase
+        // 2. التحقق من الرصيد داخل Supabase بناءً على الـ uid الموثق
+        let { data: userCheck, error: checkError } = await supabase
             .from('users')
             .select('token_balance')
             .eq('pi_uid', pi_uid)
             .single();
-        
-        if (checkError || !userCheck) {
-            return sendJson(res, 403, { error: 'INSUFFICIENT_TOKENS', currentBalance: 0 });
+            
+        // إذا كان المستخدم جديداً تماماً ولم يسجل من قبل، ننشئ له سجلاً برصيد ترحيبي
+        if (checkError && checkError.code === 'PGRST116') { 
+            const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert([{ pi_uid, username, token_balance: 100 }])
+                .select()
+                .single();
+                
+            if (createError) throw createError;
+            userCheck = newUser;
+        } else if (checkError) {
+            throw checkError;
         }
         
         if (userCheck.token_balance < cost) {
@@ -92,22 +131,21 @@ export default async function handler(req, res) {
             });
         }
         
-        // 2. الاتصال بـ OpenRouter API
+        // 3. إعداد الاتصال والطلب بـ OpenRouter API
         const openRouterKey = process.env.OPENROUTER_API_KEY;
         if (!openRouterKey) {
-            throw new Error('Missing OPENROUTER_API_KEY in environment variables');
+            throw new Error('Missing OPENROUTER_API_KEY in server environment variables');
         }
         
-        // تجهيز الـ Messages للطلب
         let apiMessages = [];
         if (!isImage && Array.isArray(messages) && messages.length > 0) {
+            // تنظيف وترتيب مصفوفة المحادثة السابقة وإرسالها بالكامل للموديل للنصوص
             apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
-            // التأكد من إدراج الـ prompt الأخير في نهاية المصفوفة إن لم يكن موجوداً
             if (apiMessages[apiMessages.length - 1]?.content !== prompt) {
                 apiMessages.push({ role: 'user', content: prompt });
             }
         } else {
-            // طلب صورة أو طلب نصي بسيط بدون تاريخ محادثة
+            // طلب صورة أو نص منفرد مباشر
             const contentText = isImage ?
                 `${prompt}\n\nCreate one high-quality image. Aspect ratio: ${width || 1024}x${height || 1024}.` :
                 prompt;
@@ -120,13 +158,13 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${openRouterKey}`,
                 'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
-                'X-Title': 'Pi Network App'
+                'X-Title': 'Pi Network AI App'
             },
             body: JSON.stringify({
                 model: selectedModel,
                 messages: apiMessages,
                 temperature: 0.7,
-                ...(isImage && { aspect_ratio: `${width || 1024}:${height || 1024}` }) // لبعض موديلات الصور الداعمة
+                ...(isImage && { aspect_ratio: `${width || 1024}:${height || 1024}` })
             })
         });
         
@@ -140,19 +178,18 @@ export default async function handler(req, res) {
         
         let finalPayload = {};
         
-        // 3. إذا كان طلب صورة: نقوم بتحميلها ثم رفعها لـ Supabase Bucket
+        // 4. معالجة وحفظ مخرجات الصور في الـ Bucket الخاص بـ Supabase
         if (isImage) {
             if (!parsedResult.imageUrl) {
-                throw new Error("OpenRouter didn't return an image URL.");
+                throw new Error("OpenRouter didn't return a valid image URL.");
             }
             
             const downloadRes = await fetch(parsedResult.imageUrl);
-            if (!downloadRes.ok) throw new Error(`Failed to download generated image from remote URL`);
+            if (!downloadRes.ok) throw new Error(`Failed to stream generated image from OpenRouter Node`);
             
             const arrayBuffer = await downloadRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             
-            // رفع الصورة لـ Supabase Storage
             uploadedFileName = `${username}_${Date.now()}.jpg`;
             const { error: uploadError } = await supabase.storage
                 .from('nano_images')
@@ -163,14 +200,19 @@ export default async function handler(req, res) {
             const { data: publicUrlData } = supabase.storage.from('nano_images').getPublicUrl(uploadedFileName);
             finalPayload.imageUrl = publicUrlData.publicUrl;
             
-            // حفظ السجل في جدول الصور
-            await supabase.from('user_images').insert([{ pi_username: username, prompt: prompt, image_url: finalPayload.imageUrl }]);
+            // حفظ السجل الموثق في جدول الصور الخاص بالمعرض
+            await supabase.from('user_images').insert([{ 
+                pi_uid: pi_uid, 
+                pi_username: username, 
+                prompt: prompt, 
+                image_url: finalPayload.imageUrl 
+            }]);
         } else {
-            // إذا كان نصاً عاديًا
-            finalPayload.reply = parsedResult.text || 'No text returned';
+            // معالجة مخرجات النصوص
+            finalPayload.reply = parsedResult.text || 'No text content returned';
         }
         
-        // 4. خصم الرصيد من قاعدة البيانات (بعد التأكد من نجاح العملية السابقة)
+        // 5. خصم التوكنز الفعلي بعد التأكد من نجاح توليد المحتوى بالكامل
         const { data: userFinal } = await supabase.from('users').select('token_balance').eq('pi_uid', pi_uid).single();
         
         if (!userFinal || userFinal.token_balance < cost) {
@@ -186,9 +228,9 @@ export default async function handler(req, res) {
         return sendJson(res, 200, finalPayload);
         
     } catch (error) {
-        console.error("Handler Error:", error);
+        console.error("Handler Process Failure:", error);
         
-        // تنظيف الملف المرفوع في حال حدوث خطأ مفاجئ أثناء العملية
+        // تنظيف وحذف الصورة المرفوعة لحماية المساحة التخزينية في حال حدوث خطأ لاحق بالتوليد
         if (uploadedFileName) {
             await supabase.storage.from('nano_images').remove([uploadedFileName]).catch(() => {});
         }
