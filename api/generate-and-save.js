@@ -1,148 +1,196 @@
 // Vercel Serverless Function: /api/generate-and-save
-// Gemini API key stays hidden on the server.
+const { createClient } = require('@supabase/supabase-js');
 
-const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-1.5-flash';
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.0-flash-preview-image-generation';
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+// أسعار الموديلات الافتراضية بناءً على تكلفة التشغيل أو رغبتك (معرفات OpenRouter الرسمية)
+const MODEL_COSTS = {
+    // موديلات الصور
+    'black-forest-labs/flux-schnell': 1,
+    'stabilityai/stable-diffusion-xl': 2,
+    
+    // موديلات النصوص/المحادثة
+    'google/gemini-2.5-flash': 1,
+    'meta-llama/llama-3-8b-instruct': 1,
+    'openai/gpt-4o-mini': 2
+};
 
 function sendJson(res, statusCode, body) {
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(JSON.stringify(body));
-}
-
-function safeMessages(messages) {
-  if (!Array.isArray(messages)) return [];
-  return messages
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-    .slice(-12)
-    .map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    res.statusCode = statusCode;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify(body));
 }
 
 async function readBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
+    if (req.body && typeof req.body === 'object') return req.body;
+    if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
 
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  return raw ? JSON.parse(raw) : {};
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks).toString('utf8');
+    return raw ? JSON.parse(raw) : {};
 }
 
-async function callGemini({ model, contents, generationConfig }) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    const err = new Error('Missing GEMINI_API_KEY');
-    err.statusCode = 500;
-    throw err;
-  }
+// دالة استخراج رابط الصورة أو النص المرجوع من OpenRouter
+function parseOpenRouterResponse(data, isImage) {
+    const content = data?.choices?.[0]?.message?.content || '';
+    if (!isImage) return { text: content };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents, generationConfig })
-  });
+    // إذا كان موديل صور، نبحث عن رابط الصورة داخل النص المرجوع
+    const markdownUrlMatch = content.match(/!\[.*?\]\((https?:\/\/.*?)\)/);
+    if (markdownUrlMatch) return { imageUrl: markdownUrlMatch[1] };
+    
+    const directUrlMatch = content.match(/(https?:\/\/[^\s]+)/);
+    if (directUrlMatch) return { imageUrl: directUrlMatch[1] };
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const err = new Error(data?.error?.message || `Gemini error ${response.status}`);
-    err.statusCode = response.status;
-    err.details = data;
-    throw err;
-  }
-  return data;
-}
-
-function extractText(data) {
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  return parts.map((p) => p.text || '').join('').trim();
-}
-
-function extractImage(data) {
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  for (const part of parts) {
-    const inline = part.inlineData || part.inline_data;
-    if (inline?.data) {
-      const mime = inline.mimeType || inline.mime_type || 'image/png';
-      return `data:${mime};base64,${inline.data}`;
-    }
-  }
-  return '';
+    return { imageUrl: content }; // قد يعود الرابط أو الـ base64 مباشرة
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed. Use POST.' });
-  }
-
-  try {
-    const body = await readBody(req);
-    const prompt = String(body.prompt || '').trim();
-    const clientModel = String(body.model || 'openai-fast');
-
-    if (!prompt) return sendJson(res, 400, { error: 'Missing prompt' });
-
-    const imageModels = new Set(['imagen-4', 'gptimage', 'klein', 'klein-large', 'gemini-image']);
-    const isImage = imageModels.has(clientModel);
-
-    if (isImage) {
-      const width = Number(body.width) || 1024;
-      const height = Number(body.height) || 1024;
-      const data = await callGemini({
-        model: IMAGE_MODEL,
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: `${prompt}\n\nCreate one high-quality image. Target aspect ratio: ${width}:${height}.`
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE']
-        }
-      });
-
-      const imageUrl = extractImage(data);
-      const reply = extractText(data);
-      if (!imageUrl) {
-        return sendJson(res, 502, {
-          error: 'Gemini returned no image. Check GEMINI_IMAGE_MODEL or use chat model.',
-          reply
-        });
-      }
-      return sendJson(res, 200, { imageUrl, width, height, reply, newBalance: 999 });
+    if (req.method !== 'POST') {
+        return sendJson(res, 405, { error: 'Method Not Allowed' });
     }
 
-    const history = safeMessages(body.messages);
-    const contents = history.length ? history : [{ role: 'user', parts: [{ text: prompt }] }];
-    const lastText = contents[contents.length - 1]?.parts?.[0]?.text;
-    if (lastText !== prompt) contents.push({ role: 'user', parts: [{ text: prompt }] });
+    let uploadedFileName = null;
 
-    const data = await callGemini({
-      model: TEXT_MODEL,
-      contents,
-      generationConfig: { temperature: 0.7 }
-    });
+    try {
+        const body = await readBody(req);
+        const { prompt, username, pi_uid, model, width, height, messages } = body;
 
-    return sendJson(res, 200, {
-      reply: extractText(data) || 'Gemini returned no text.',
-      newBalance: 999
-    });
-  } catch (error) {
-    console.error('generate-and-save failed:', error);
-    return sendJson(res, error.statusCode || 500, {
-      error: error.message || 'Server error',
-      details: error.details || undefined,
-      hint:
-        error.message === 'Missing GEMINI_API_KEY'
-          ? 'Add GEMINI_API_KEY in Vercel Project Settings > Environment Variables, then redeploy.'
-          : undefined
-    });
-  }
+        if (!prompt || !username || !pi_uid) {
+            return sendJson(res, 400, { error: "Missing data (prompt, username, or pi_uid)" });
+        }
+
+        // تحديد الموديل والخصم الافتراضي
+        const selectedModel = model || 'google/gemini-2.5-flash';
+        const cost = MODEL_COSTS[selectedModel] || 3; // 3 توكن افتراضي إذا لم يكن في القائمة
+
+        // معرفة نوع الطلب (صور أم نصوص) بناءً على اسم الموديل المشحون
+        const isImage = selectedModel.includes('flux') || selectedModel.includes('diffusion') || selectedModel.includes('stable');
+
+        // 1. التحقق من الرصيد في Supabase
+        const { data: userCheck, error: checkError } = await supabase
+            .from('users')
+            .select('token_balance')
+            .eq('pi_uid', pi_uid)
+            .single();
+
+        if (checkError || !userCheck) {
+            return sendJson(res, 403, { error: 'INSUFFICIENT_TOKENS', currentBalance: 0 });
+        }
+
+        if (userCheck.token_balance < cost) {
+            return sendJson(res, 403, { 
+                error: 'INSUFFICIENT_TOKENS', 
+                required: cost,
+                currentBalance: userCheck.token_balance 
+            });
+        }
+
+        // 2. الاتصال بـ OpenRouter API
+        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        if (!openRouterKey) {
+            throw new Error('Missing OPENROUTER_API_KEY in environment variables');
+        }
+
+        // تجهيز الـ Messages للطلب
+        let apiMessages = [];
+        if (!isImage && Array.isArray(messages) && messages.length > 0) {
+            apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
+            // التأكد من إدراج الـ prompt الأخير في نهاية المصفوفة إن لم يكن موجوداً
+            if (apiMessages[apiMessages.length - 1]?.content !== prompt) {
+                apiMessages.push({ role: 'user', content: prompt });
+            }
+        } else {
+            // طلب صورة أو طلب نصي بسيط بدون تاريخ محادثة
+            const contentText = isImage 
+                ? `${prompt}\n\nCreate one high-quality image. Aspect ratio: ${width || 1024}x${height || 1024}.`
+                : prompt;
+            apiMessages = [{ role: 'user', content: contentText }];
+        }
+
+        const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${openRouterKey}`,
+                'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
+                'X-Title': 'Pi Network App'
+            },
+            body: JSON.stringify({
+                model: selectedModel,
+                messages: apiMessages,
+                temperature: 0.7,
+                ...(isImage && { aspect_ratio: `${width || 1024}:${height || 1024}` }) // لبعض موديلات الصور الداعمة
+            })
+        });
+
+        if (!openRouterRes.ok) {
+            const errData = await openRouterRes.json().catch(() => ({}));
+            throw new Error(`OpenRouter Failed: ${errData?.error?.message || openRouterRes.statusText}`);
+        }
+
+        const openRouterData = await openRouterRes.json();
+        const parsedResult = parseOpenRouterResponse(openRouterData, isImage);
+
+        let finalPayload = {};
+
+        // 3. إذا كان طلب صورة: نقوم بتحميلها ثم رفعها لـ Supabase Bucket
+        if (isImage) {
+            if (!parsedResult.imageUrl) {
+                throw new Error("OpenRouter didn't return an image URL.");
+            }
+
+            const downloadRes = await fetch(parsedResult.imageUrl);
+            if (!downloadRes.ok) throw new Error(`Failed to download generated image from remote URL`);
+            
+            const arrayBuffer = await downloadRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            // رفع الصورة لـ Supabase Storage
+            uploadedFileName = `${username}_${Date.now()}.jpg`;
+            const { error: uploadError } = await supabase.storage
+                .from('nano_images')
+                .upload(uploadedFileName, buffer, { contentType: 'image/jpeg' });
+                
+            if (uploadError) throw uploadError;
+
+            const { data: publicUrlData } = supabase.storage.from('nano_images').getPublicUrl(uploadedFileName);
+            finalPayload.imageUrl = publicUrlData.publicUrl;
+
+            // حفظ السجل في جدول الصور
+            await supabase.from('user_images').insert([{ pi_username: username, prompt: prompt, image_url: finalPayload.imageUrl }]);
+        } else {
+            // إذا كان نصاً عاديًا
+            finalPayload.reply = parsedResult.text || 'No text returned';
+        }
+
+        // 4. خصم الرصيد من قاعدة البيانات (بعد التأكد من نجاح العملية السابقة)
+        const { data: userFinal } = await supabase.from('users').select('token_balance').eq('pi_uid', pi_uid).single();
+        
+        if (!userFinal || userFinal.token_balance < cost) {
+            throw new Error("INSUFFICIENT_TOKENS_LATE");
+        }
+
+        const newBalance = userFinal.token_balance - cost;
+        await supabase.from('users').update({ token_balance: newBalance }).eq('pi_uid', pi_uid);
+
+        finalPayload.success = true;
+        finalPayload.newBalance = newBalance;
+
+        return sendJson(res, 200, finalPayload);
+
+    } catch (error) {
+        console.error("Handler Error:", error);
+        
+        // تنظيف الملف المرفوع في حال حدوث خطأ مفاجئ أثناء العملية
+        if (uploadedFileName) {
+            await supabase.storage.from('nano_images').remove([uploadedFileName]).catch(() => {});
+        }
+        
+        if (error.message === "INSUFFICIENT_TOKENS_LATE") {
+            return sendJson(res, 403, { error: 'INSUFFICIENT_TOKENS' });
+        }
+        return sendJson(res, 500, { error: error.message });
+    }
 };
