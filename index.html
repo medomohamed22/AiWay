@@ -665,7 +665,7 @@ body {
     <div class="header">
         <div class="header-title-area" onclick="toggleModelMenu()">
             <div style="font-weight:700; font-size:16px; display:flex; align-items:center;" id="headerModelName">
-                Imagen 4
+                Flux Schnell
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#777" id="modelChevron" style="transition:0.3s; margin-inline-start:5px;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
         </div>
@@ -778,17 +778,15 @@ function copyCodeFromBlock(btn) {
 
 
 /* =========================
-   CONFIG
+   CONFIG (Updated with official OpenRouter Models)
    ========================= */
 const MODELS = [
-    { id: 'openai-large', category: 'Chat & Vision', name: 'GPT-5.2', type: 'text', cost: 3, desc: 'Deep Reasoning' },
-    { id: 'openai-fast', category: 'Chat & Vision', name: 'GPT-5 Nano', type: 'text', cost: 1, desc: 'Fast Chat' },
-    { id: 'openai', category: 'Chat & Vision', name: 'GPT-5 Mini', type: 'text', cost: 1, desc: 'Balanced' },
+    { id: 'google/gemini-2.5-flash', category: 'Chat & Vision', name: 'Gemini 2.5 Flash', type: 'text', cost: 1, desc: 'Balanced & Fast' },
+    { id: 'meta-llama/llama-3-8b-instruct', category: 'Chat & Vision', name: 'Llama 3 8B', type: 'text', cost: 1, desc: 'Highly Responsive' },
+    { id: 'openai/gpt-4o-mini', category: 'Chat & Vision', name: 'GPT-4o Mini', type: 'text', cost: 2, desc: 'Smart & Creative' },
 
-    { id: 'imagen-4', category: 'Image Generation', name: 'Imagen 4', type: 'image', cost: 1, desc: 'High Quality' },
-    { id: 'gptimage', category: 'Image Generation', name: 'Chat GPT Image', type: 'image', cost: 5, desc: 'Creative' },
-    { id: 'klein', category: 'Image Generation', name: 'FLUX.2 Klein 4B', type: 'image', cost: 2, desc: 'Fast Gen' },
-    { id: 'klein-large', category: 'Image Generation', name: 'FLUX.2 Klein 9B', type: 'image', cost: 4, desc: 'Detailed' }
+    { id: 'black-forest-labs/flux-schnell', category: 'Image Generation', name: 'Flux Schnell', type: 'image', cost: 1, desc: 'Fast Generation' },
+    { id: 'stabilityai/stable-diffusion-xl', category: 'Image Generation', name: 'SDXL 1.0', type: 'image', cost: 2, desc: 'High Detailed Visuals' }
 ];
 
 const RATIOS = [
@@ -837,7 +835,7 @@ const TRANSLATIONS = {
    STATE
    ========================= */
 let currentLang = 'en';
-let currentModel = 'imagen-4';
+let currentModel = 'black-forest-labs/flux-schnell';
 let currentWidth = 1024;
 let currentHeight = 1024;
 let currentRatioId = 'square';
@@ -894,8 +892,6 @@ renderer.code = function(code, language) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-    // نضع الكود داخل <pre><code> بشكل طبيعي
-    // الزر الآن يستدعي دالة تبحث عن الكود المجاور
     return `
     <div class="code-wrapper">
         <div class="code-header">
@@ -910,14 +906,11 @@ renderer.code = function(code, language) {
 marked.setOptions({ renderer: renderer });
 
 function copyCodeBlock(btn) {
-    // جلب الكود المشفر من خاصية data-code
     const encodedData = btn.getAttribute('data-code');
     if (!encodedData) return;
     
     try {
-        // فك التشفير
         const code = decodeURIComponent(encodedData);
-        // استدعاء دالة النسخ الأصلية
         copyText(btn, code);
     } catch (e) {
         console.error("Copy Error:", e);
@@ -933,7 +926,6 @@ function copyText(btn, text) {
         setTimeout(() => { btn.innerHTML = originalText; }, 2000);
     }).catch(err => {
         console.error('Failed to copy', err);
-        // fallback
         try {
             const ta = document.createElement("textarea");
             ta.value = value;
@@ -959,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAspectMenu();
     updateAspectUI();
     applyLanguage('en');
-    updateHeaderModelUI(); // ✅ FIX: بعد applyLanguage علشان placeholder يبقى صح حسب نوع الموديل
+    updateHeaderModelUI();
     fetchPiPrice();
     setInterval(fetchPiPrice, 10000);
 });
@@ -983,7 +975,7 @@ function toggleLanguage() {
     document.getElementById('langBtn').textContent = label;
     document.getElementById('landingLangBtn').textContent = label;
     applyLanguage(currentLang);
-    updateHeaderModelUI(); // ✅ FIX: لضمان placeholder الصحيح حسب نوع الموديل
+    updateHeaderModelUI();
 }
 
 function applyLanguage(lang) {
@@ -1181,34 +1173,32 @@ async function buyTokens(pkg, piAmount) {
         };
         await Pi.createPayment(paymentData, {
            onReadyForServerApproval: async (paymentId) => {
-    const res = await fetch('/api/approve', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
-        body: JSON.stringify({ paymentId }) 
-    });
-    
-    if (!res.ok) {
-        // نصيحة: اقرأ الخطأ لتعرف السبب بدقة
-        const errData = await res.json();
-        console.error("Approve Error:", errData);
-        throw new Error("Approval Failed");
-    }
-},
+                const res = await fetch('/api/approve', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId }) 
+                });
+                
+                if (!res.ok) {
+                    const errData = await res.json();
+                    console.error("Approve Error:", errData);
+                    throw new Error("Approval Failed");
+                }
+            },
            onReadyForServerCompletion: async (paymentId, txid) => {
-    const res = await fetch('/api/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // ✅ تأكد من وجود هذا السطر
-        body: JSON.stringify({
-            paymentId,
-            txid,
-            pi_uid: piUser.uid,
-            username: piUser.username,
-            tokenAmount: pkg.tokens,
-            usdAmount: pkg.usd,
-            pAmount: paymentData.amount
-        })
-    });
-    // ... باقي الكود
+                const res = await fetch('/api/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paymentId,
+                        txid,
+                        pi_uid: piUser.uid,
+                        username: piUser.username,
+                        tokenAmount: pkg.tokens,
+                        usdAmount: pkg.usd,
+                        pAmount: paymentData.amount
+                    })
+                });
                 if (!res.ok) throw new Error("Completion Failed");
                 const data = await res.json();
                 document.getElementById('tokenBalance').textContent = data.newBalance;
@@ -1247,8 +1237,6 @@ async function fetchWithRetry(url, options, retries = 2) {
     for (let i = 0; i <= retries; i++) {
         try {
             const res = await fetch(url, options);
-
-            // ✅ FIX: رجّع الريسبونس حتى لو 403/429/500 عشان نقرأ رسالة الخطأ
             if (res) return res;
         } catch (e) {
             lastErr = e;
@@ -1275,7 +1263,6 @@ async function sendPrompt() {
   triggerCooldown(5);
   
   try {
-    // ✅ ابعت prompt دايمًا (ده اللي بيمنع Missing data)
     let payload = {
       prompt: String(text),
       username: piUser.username,
@@ -1284,10 +1271,8 @@ async function sendPrompt() {
     };
     
     if (isChat) {
-      // ✅ ابعت messages كمان لو شات
       payload.messages = [...normalizeMessages(chatHistory), { role: "user", content: String(text) }];
     } else {
-      // ✅ ابعت المقاسات لو صورة
       payload.width = currentWidth;
       payload.height = currentHeight;
     }
@@ -1355,9 +1340,6 @@ function addBotText(text) {
     const div = document.createElement('div');
     div.className = 'message bot';
 
-    // 1. تحويل النص من Markdown إلى HTML باستخدام marked
-    // gfm: true يفعل الجداول والقوائم المحسنة
-    // breaks: true يحول الضغط على Enter إلى سطر جديد
     const htmlContent = marked.parse(text, { gfm: true, breaks: true });
 
     div.innerHTML = `
@@ -1371,22 +1353,17 @@ function addBotText(text) {
         </div>
     `;
 
-    // 2. البحث عن أكواد البرمجة وتغليفها في الصندوق الأسود (Code Box)
     const preBlocks = div.querySelectorAll('pre');
     
     preBlocks.forEach(pre => {
-        // إذا كان الـ pre موجود بالفعل داخل wrapper نتخطاه (للحماية)
         if (pre.parentNode.classList.contains('code-wrapper')) return;
 
-        // إنشاء الصندوق الخارجي
         const wrapper = document.createElement('div');
         wrapper.className = 'code-wrapper';
 
-        // محاولة معرفة لغة الكود (اختياري)
         let langClass = pre.querySelector('code')?.className || '';
         let lang = langClass.replace('language-', '') || 'CODE';
 
-        // إنشاء الهيدر (شريط العنوان وزر النسخ)
         const header = document.createElement('div');
         header.className = 'code-header';
         header.innerHTML = `
@@ -1397,10 +1374,7 @@ function addBotText(text) {
             </button>
         `;
 
-        // إدخال الصندوق الجديد في الصفحة مكان الـ pre القديم
         pre.parentNode.insertBefore(wrapper, pre);
-        
-        // نقل الهيدر والـ pre داخل الصندوق
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
     });
@@ -1561,10 +1535,10 @@ async function deleteImage(imageId, btn) {
     parent.style.opacity = '0.5';
     try {
         const res = await fetch('/api/delete-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, // ✅✅ هذا السطر هو الحل
-    body: JSON.stringify({ id: imageId, username: piUser.username })
-});
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: imageId, username: piUser.username })
+        });
         if (res.ok) parent.remove();
         else { alert(t.error); parent.style.opacity = '1'; }
     } catch(e) { console.error(e); }
@@ -1610,9 +1584,7 @@ async function loadChatHistory() {
             }
         });
 
-        // ✅ FIX: نظّف الهستوري
         chatHistory = normalizeMessages(chatHistory).slice(-24);
-
         scrollToBottom();
 
     } catch (e) {
@@ -1621,12 +1593,9 @@ async function loadChatHistory() {
     }
 }
 function copyCode(btn) {
-    // العثور على الكود داخل الصندوق
     const code = btn.closest('.code-wrapper').querySelector('code');
     if(code) {
-        // نسخ النص
         navigator.clipboard.writeText(code.innerText).then(() => {
-            // تغيير النص لـ "تم" مؤقتاً
             const old = btn.innerHTML; 
             btn.innerHTML = '<span>✅ تم!</span>';
             setTimeout(() => btn.innerHTML = old, 2000);
