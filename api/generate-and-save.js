@@ -12,7 +12,11 @@ const MODEL_COSTS = {
     // موديلات النصوص/المحادثة
     'google/gemini-2.5-flash': 1,
     'meta-llama/llama-3-8b-instruct': 1,
-    'openai/gpt-4o-mini': 2
+    'openai/gpt-4o-mini': 2,
+
+    // موديلات DeepSeek المضافة حديثاً
+    'deepseek/deepseek-chat': 1,       // موديل DeepSeek V3 للمحادثة السريعة
+    'deepseek/deepseek-r1': 3          // موديل DeepSeek R1 للتفكير المعقد والبرمجة
 };
 
 function sendJson(res, statusCode, body) {
