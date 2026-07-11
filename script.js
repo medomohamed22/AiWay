@@ -45,7 +45,28 @@ function updateModel() { $('headerModelName').textContent=state.model?`${state.m
 function renderRatios(){const menu=$('aspectMenu');menu.replaceChildren();ratios.forEach(r=>{const b=element('button',`menu-option${state.ratio.id===r.id?' active':''}`,r.label);b.type='button';b.addEventListener('click',()=>{state.ratio=r;$('currentAspectLabel').textContent=r.label;menu.classList.remove('open');renderRatios();});menu.append(b);});}
 function renderPackages(){const grid=$('buyGrid');grid.replaceChildren();if(!state.paymentsEnabled){grid.append(element('p','status','الشراء متوقف حتى يحدد الخادم سعر Pi.'));return;}state.packages.forEach(pkg=>{if(!pkg?.id||!Number.isFinite(Number(pkg.usd))||!Number.isFinite(Number(pkg.tokens)))return;const amount=(Number(pkg.usd)/state.piPrice).toFixed(4);const b=element('button','buy-card');b.type='button';b.append(element('strong','',`${pkg.tokens} Tokens`),element('span','buy-cost',`${amount} π · $${pkg.usd}`));b.addEventListener('click',()=>buy(pkg,amount));grid.append(b);});}
 
-async function login(){if(!window.Pi)return toast('Pi SDK غير متاح');$('loginStatus').textContent='جاري التحقق…';try{const auth=await Pi.authenticate(['username','payments'],resumePayment);if(!auth?.accessToken)throw new Error('INVALID_AUTH');state.token=auth.accessToken;$('landingPage').classList.add('hidden');await Promise.all([balance(),history()]);}catch(e){console.error(e);toast('فشل تسجيل الدخول');}finally{$('loginStatus').textContent='';}}
+function piError(error) {
+  if (typeof error === 'string') return error;
+  return String(error?.message || error?.error || error?.code || 'PI_AUTH_FAILED').slice(0, 180);
+}
+async function login(){
+  if(!window.Pi)return toast('Pi SDK غير متاح؛ افتح الموقع داخل Pi Browser');
+  $('loginStatus').textContent='جاري التحقق…';
+  let auth;
+  try {
+    auth=await window.Pi.authenticate(['username','payments'],resumePayment);
+    if(!auth?.accessToken)throw new Error('Pi لم يُرجع Access Token');
+  } catch(error) {
+    console.error('Pi authentication failed:',error);
+    const message=`فشل توثيق Pi: ${piError(error)}`;
+    $('loginStatus').textContent=message; toast(message); return;
+  }
+  state.token=auth.accessToken;
+  $('landingPage').classList.add('hidden');
+  try { await Promise.all([balance(),history()]); }
+  catch(error) { console.error('Account bootstrap failed:',error); toast(`تم دخول Pi لكن فشل تحميل الحساب: ${piError(error)}`); }
+  finally { $('loginStatus').textContent=''; }
+}
 async function balance(){const data=await api('/api/get-balance',{headers:authHeaders()});$('tokenBalance').textContent=String(data.balance??0);}
 async function resumePayment(payment){if(!payment?.identifier||!state.token)return;toast('يوجد دفع غير مكتمل؛ أكمله من محفظة Pi.');}
 async function buy(pkg,amount){if(!state.token)return toast('سجّل الدخول أولًا');try{await Pi.createPayment({amount:Number(amount),memo:`${pkg.tokens} Tokens - AIWay`,metadata:{packageId:pkg.id,type:'tokens'}},{onReadyForServerApproval:async paymentId=>{await api('/api/approve',{method:'POST',headers:authHeaders(true),body:JSON.stringify({paymentId})});},onReadyForServerCompletion:async(paymentId,txid)=>{const result=await api('/api/complete',{method:'POST',headers:authHeaders(true),body:JSON.stringify({paymentId,txid})});$('tokenBalance').textContent=String(result.newBalance);setModal('buyModal',false);toast('تمت إضافة الرصيد');},onCancel:()=>toast('تم إلغاء الدفع'),onError:()=>toast('فشل الدفع')});}catch(e){console.error(e);toast(e.message);}}
